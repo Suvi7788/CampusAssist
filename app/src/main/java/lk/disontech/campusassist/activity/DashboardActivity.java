@@ -11,6 +11,7 @@ import lk.disontech.campusassist.fragment.fragment.student.MyAssignmentsFragment
 import lk.disontech.campusassist.fragment.fragment.student.NotificationsFragment;
 import lk.disontech.campusassist.fragment.fragment.student.StudentDashboardFragment;
 import lk.disontech.campusassist.fragment.fragment.student.PostNewAssignmentFragment;
+import lk.disontech.campusassist.fragment.fragment.writer.WriterDashboardFragment;
 
 
 public class DashboardActivity extends AppCompatActivity
@@ -31,6 +32,13 @@ public class DashboardActivity extends AppCompatActivity
                 getSupportFragmentManager()
                         .beginTransaction()
                         .replace(R.id.dashboardContainer, new StudentDashboardFragment())
+                        .commit();
+                break;
+
+            case "writer":
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.dashboardContainer, new WriterDashboardFragment())
                         .commit();
                 break;
 
