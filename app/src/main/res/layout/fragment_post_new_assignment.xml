@@ -12,54 +12,57 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Top blue header -->
+        <!-- Toolbar -->
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/topAppBar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
             android:background="#1E3A8A"
-            android:minHeight="?attr/actionBarSize"
             app:navigationIcon="@android:drawable/ic_media_previous"
             app:title="Post New Assignment"
-            app:titleCentered="true"
-            app:titleTextColor="@android:color/white" />
+            app:titleTextColor="@android:color/white"/>
 
-        <!-- Content padding area -->
+        <!-- Content -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="16dp">
 
-            <!-- Main card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="3dp"
-                app:strokeWidth="0dp"
-                >
+                app:cardCornerRadius="18dp"
+                app:cardElevation="4dp"
+                android:backgroundTint="@android:color/white">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp"
-                    >
+                    android:padding="18dp">
 
-                    <!-- Assignment Title -->
+                    <!-- Title -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Assignment Title"
+                        android:textSize="14sp"
+                        android:textColor="#111827"/>
+
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        app:boxBackgroundMode="filled"
+                        android:layout_marginTop="8dp"
+                        android:hint="e.g., Research Paper on Climate Change"
+                        app:boxBackgroundMode="outline"
+                        app:boxStrokeColor="#D1D5DB"
+                        app:boxStrokeWidth="1dp"
+                        app:boxStrokeWidthFocused="2dp"
                         app:boxCornerRadiusTopStart="12dp"
                         app:boxCornerRadiusTopEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusBottomEnd="12dp"
-                        app:hintEnabled="true"
-                        android:hint="Assignment Title"
-                        app:helperText="e.g., Research Paper on Climate Change"
-                        >
+                        app:boxCornerRadiusBottomEnd="12dp">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etTitle"
@@ -68,42 +71,63 @@
                             android:inputType="textCapSentences"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Subject (Dropdown) -->
+
+                    <!-- Subject -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Subject"
+                        android:layout_marginTop="16dp"
+                        android:textSize="14sp"
+                        android:textColor="#111827"/>
+
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilSubject"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        app:boxBackgroundMode="filled"
+                        android:layout_marginTop="8dp"
+                        android:hint="Select subject"
+                        app:endIconMode="dropdown_menu"
+                        app:boxBackgroundMode="outline"
+                        app:boxStrokeColor="#D1D5DB"
+                        app:boxStrokeWidth="1dp"
+                        app:boxStrokeWidthFocused="2dp"
                         app:boxCornerRadiusTopStart="12dp"
                         app:boxCornerRadiusTopEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusBottomEnd="12dp"
-                        android:hint="Subject"
-                        app:endIconMode="dropdown_menu">
+                        app:boxCornerRadiusBottomEnd="12dp">
 
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
                             android:id="@+id/actvSubject"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="none" />
+                            android:inputType="none"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
+
                     <!-- Description -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Description"
+                        android:layout_marginTop="16dp"
+                        android:textSize="14sp"
+                        android:textColor="#111827"/>
+
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilDescription"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        app:boxBackgroundMode="filled"
+                        android:layout_marginTop="8dp"
+                        android:hint="Provide detailed instructions for your assignment..."
+                        app:boxBackgroundMode="outline"
+                        app:boxStrokeColor="#D1D5DB"
+                        app:boxStrokeWidth="1dp"
+                        app:boxStrokeWidthFocused="2dp"
                         app:boxCornerRadiusTopStart="12dp"
                         app:boxCornerRadiusTopEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusBottomEnd="12dp"
-                        android:hint="Description"
-                        app:helperText="Provide detailed instructions for your assignment..."
-                        >
-
+                        app:boxCornerRadiusBottomEnd="12dp">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etDescription"
@@ -113,20 +137,31 @@
                             android:inputType="textMultiLine"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
+
                     <!-- Deadline -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Deadline"
+                        android:layout_marginTop="16dp"
+                        android:textSize="14sp"
+                        android:textColor="#111827"/>
+
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilDeadline"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        app:boxBackgroundMode="filled"
+                        android:layout_marginTop="8dp"
+                        app:endIconMode="custom"
+                        app:endIconDrawable="@android:drawable/ic_menu_my_calendar"
+                        app:boxBackgroundMode="outline"
+                        app:boxStrokeColor="#D1D5DB"
+                        app:boxStrokeWidth="1dp"
+                        app:boxStrokeWidthFocused="2dp"
                         app:boxCornerRadiusTopStart="12dp"
                         app:boxCornerRadiusTopEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusBottomEnd="12dp"
-                        app:helperText="Deadline"
-                        app:endIconMode="custom"
-                        app:endIconDrawable="@android:drawable/ic_menu_my_calendar">
+                        app:boxCornerRadiusBottomEnd="12dp">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etDeadline"
@@ -134,19 +169,18 @@
                             android:layout_height="wrap_content"
                             android:focusable="false"
                             android:clickable="true"
-                            android:hint="mm/dd/yyyy"
-                            android:inputType="none" />
+                            android:hint="mm/dd/yyyy"/>
                     </com.google.android.material.textfield.TextInputLayout>
+
 
                     <!-- Attachment -->
                     <TextView
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
                         android:text="Attachment"
-                        android:textStyle="bold"
-                        android:textSize="13sp"
-                        android:textColor="#111827" />
+                        android:layout_marginTop="16dp"
+                        android:textSize="14sp"
+                        android:textColor="#111827"/>
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnAttach"
@@ -155,34 +189,39 @@
                         android:layout_marginTop="8dp"
                         android:text="Attach File (optional)"
                         android:textAllCaps="false"
+                        android:textColor="#111827"
+                        app:cornerRadius="24dp"
                         app:icon="@android:drawable/ic_menu_upload"
-                        app:iconPadding="10dp"
-                        app:cornerRadius="12dp"
-                        style="@style/Widget.Material3.Button.OutlinedButton" />
+                        app:iconPadding="8dp"
+                        app:strokeColor="#D1D5DB"
+                        app:strokeWidth="1dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
 
                     <TextView
                         android:id="@+id/tvAttachmentName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
-                        android:text=""
                         android:textSize="12sp"
                         android:textColor="#6B7280"
-                        android:visibility="gone" />
+                        android:visibility="gone"/>
 
-                    <!-- Submit -->
+
+                    <!-- Submit Button -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnSubmit"
                         android:layout_width="match_parent"
                         android:layout_height="52dp"
-                        android:layout_marginTop="18dp"
+                        android:layout_marginTop="22dp"
                         android:text="Submit Assignment"
                         android:textAllCaps="false"
-                        app:cornerRadius="14dp"
+                        android:textColor="@android:color/white"
+                        android:textSize="15sp"
                         android:backgroundTint="#1E3A8A"
-                        android:textColor="@android:color/white" />
+                        app:cornerRadius="26dp"/>
 
                 </LinearLayout>
+
             </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>

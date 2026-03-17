@@ -3,19 +3,22 @@ package lk.disontech.campusassist.activity;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 
 import lk.disontech.campusassist.R;
 import lk.disontech.campusassist.fragment.fragment.student.BrowseWritersFragment;
 import lk.disontech.campusassist.fragment.fragment.student.HelpGuidelinesFragment;
 import lk.disontech.campusassist.fragment.fragment.student.MyAssignmentsFragment;
 import lk.disontech.campusassist.fragment.fragment.student.NotificationsFragment;
-import lk.disontech.campusassist.fragment.fragment.student.StudentDashboardFragment;
 import lk.disontech.campusassist.fragment.fragment.student.PostNewAssignmentFragment;
+import lk.disontech.campusassist.fragment.fragment.student.StudentDashboardFragment;
+import lk.disontech.campusassist.fragment.fragment.writer.BrowseAssignmentsFragment;
+import lk.disontech.campusassist.fragment.fragment.writer.MyAcceptedWorkFragment;
 import lk.disontech.campusassist.fragment.fragment.writer.WriterDashboardFragment;
 
-
 public class DashboardActivity extends AppCompatActivity
-        implements StudentDashboardFragment.StudentDashboardNavigator {
+        implements StudentDashboardFragment.StudentDashboardNavigator,
+        WriterDashboardFragment.WriterDashboardNavigator {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,10 +45,6 @@ public class DashboardActivity extends AppCompatActivity
                         .commit();
                 break;
 
-            // TODO later:
-            // case "writer": load WriterDashboardFragment
-            // case "admin": load AdminDashboardFragment
-
             default:
                 getSupportFragmentManager()
                         .beginTransaction()
@@ -55,52 +54,70 @@ public class DashboardActivity extends AppCompatActivity
         }
     }
 
-    // ✅ This is called from StudentDashboardFragment when the card is clicked
+    // =========================
+    // Student Navigation
+    // =========================
+
     @Override
     public void openPostNewAssignment() {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.dashboardContainer, new PostNewAssignmentFragment())
-                .addToBackStack(null)
-                .commit();
+        openFragment(new PostNewAssignmentFragment());
     }
 
     @Override
     public void openMyAssignments() {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.dashboardContainer, new MyAssignmentsFragment())
-                .addToBackStack(null)
-                .commit();
+        openFragment(new MyAssignmentsFragment());
     }
 
     @Override
     public void openBrowseWriters() {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.dashboardContainer, new BrowseWritersFragment())
-                .addToBackStack(null)
-                .commit();
+        openFragment(new BrowseWritersFragment());
     }
 
     @Override
     public void openNotifications() {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.dashboardContainer, new NotificationsFragment())
-                .addToBackStack(null)
-                .commit();
+        openFragment(new NotificationsFragment());
     }
 
     @Override
     public void openHelpGuidelines() {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.dashboardContainer, new HelpGuidelinesFragment())
-                .addToBackStack(null)
-                .commit();
+        openFragment(new HelpGuidelinesFragment());
+    }
+
+    // =========================
+    // Writer Navigation
+    // =========================
+
+    @Override
+    public void openBrowseAssignments() {
+        openFragment(new BrowseAssignmentsFragment());
     }
 
     @Override
-    public void openDrawerOrMenu() { /* later */ }
+    public void openAcceptedWork() {
+        openFragment(new MyAcceptedWorkFragment());
+
+    }
+
+    @Override
+    public void openProfile() {
+        // TODO: Create WriterProfileFragment later
+        // openFragment(new WriterProfileFragment());
+    }
+
+    @Override
+    public void openDrawerOrMenu() {
+        // TODO: Open drawer/menu later
+    }
+
+    // =========================
+    // Common Fragment Opener
+    // =========================
+
+    private void openFragment(Fragment fragment) {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.dashboardContainer, fragment)
+                .addToBackStack(null)
+                .commit();
+    }
 }
