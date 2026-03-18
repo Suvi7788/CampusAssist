@@ -4,24 +4,25 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F3F3F3">
+    android:background="?attr/colorSurface">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/topAppBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#24439B"
+        android:background="?attr/colorPrimary"
         android:minHeight="56dp"
+        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
         app:navigationIcon="@android:drawable/ic_media_previous"
-        app:navigationIconTint="@android:color/white"
         app:title="My Accepted Work"
-        app:titleTextColor="@android:color/white" />
+        app:titleCentered="true"
+        app:titleTextColor="?attr/colorOnPrimary" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerAcceptedWork"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="14dp"
+        android:padding="16dp"
         android:clipToPadding="false" />
 
 </LinearLayout>

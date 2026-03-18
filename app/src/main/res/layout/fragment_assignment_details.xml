@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="#F3F4F6">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -17,25 +17,31 @@
             android:id="@+id/topAppBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#1E3A8A"
-            android:minHeight="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            android:minHeight="56dp"
+            android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
             app:navigationIcon="@android:drawable/ic_media_previous"
             app:title="Assignment Details"
-            app:titleTextColor="@android:color/white" />
+            app:titleCentered="true"
+            app:titleTextColor="?attr/colorOnPrimary" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="24dp">
 
             <!-- Details Card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="3dp"
-                app:cardBackgroundColor="@android:color/white">
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -48,41 +54,45 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Research Paper on Climate Change"
-                        android:textStyle="bold"
-                        android:textSize="16sp"
-                        android:textColor="#111827" />
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     <!-- Subject row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="16dp"
                         android:gravity="center_vertical">
 
-                        <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="?attr/colorSecondary"
+                            android:padding="4dp"
+                            android:scaleType="centerInside"
                             android:src="@android:drawable/ic_menu_agenda"
-                            android:tint="#6B7280" />
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                            app:tint="?attr/colorOnSecondary" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="10dp"
+                            android:layout_marginStart="12dp"
                             android:text="Subject:"
-                            android:textSize="13sp"
-                            android:textColor="#6B7280" />
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="14sp" />
 
                         <TextView
                             android:id="@+id/tvSubject"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
+                            android:layout_marginStart="8dp"
                             android:text="Environmental Science"
-                            android:textStyle="bold"
-                            android:textSize="13sp"
-                            android:textColor="#111827" />
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                     <!-- Deadline row -->
@@ -90,32 +100,36 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginTop="10dp"
+                        android:layout_marginTop="12dp"
                         android:gravity="center_vertical">
 
-                        <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="?attr/colorTertiary"
+                            android:padding="4dp"
+                            android:scaleType="centerInside"
                             android:src="@android:drawable/ic_menu_my_calendar"
-                            android:tint="#6B7280" />
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                            app:tint="?attr/colorOnTertiary" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="10dp"
+                            android:layout_marginStart="12dp"
                             android:text="Deadline:"
-                            android:textSize="13sp"
-                            android:textColor="#6B7280" />
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="14sp" />
 
                         <TextView
                             android:id="@+id/tvDeadline"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
+                            android:layout_marginStart="8dp"
                             android:text="Feb 28, 2026"
-                            android:textStyle="bold"
-                            android:textSize="13sp"
-                            android:textColor="#111827" />
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                     <!-- Student row -->
@@ -123,32 +137,36 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginTop="10dp"
+                        android:layout_marginTop="12dp"
                         android:gravity="center_vertical">
 
-                        <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="?attr/colorPrimary"
+                            android:padding="4dp"
+                            android:scaleType="centerInside"
                             android:src="@android:drawable/ic_menu_edit"
-                            android:tint="#6B7280" />
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                            app:tint="?attr/colorOnPrimary" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="10dp"
+                            android:layout_marginStart="12dp"
                             android:text="Student:"
-                            android:textSize="13sp"
-                            android:textColor="#6B7280" />
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="14sp" />
 
                         <TextView
                             android:id="@+id/tvStudent"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
+                            android:layout_marginStart="8dp"
                             android:text="John Doe"
-                            android:textStyle="bold"
-                            android:textSize="13sp"
-                            android:textColor="#111827" />
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                 </LinearLayout>
@@ -158,10 +176,11 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="3dp"
-                app:cardBackgroundColor="@android:color/white">
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -173,19 +192,19 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Description"
-                        android:textStyle="bold"
-                        android:textSize="14sp"
-                        android:textColor="#111827" />
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/tvDescription"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:lineSpacingExtra="3dp"
+                        android:layout_marginTop="12dp"
+                        android:lineSpacingExtra="4dp"
                         android:text="Write a comprehensive research paper..."
-                        android:textSize="13sp"
-                        android:textColor="#6B7280" />
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="14sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -193,10 +212,11 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="3dp"
-                app:cardBackgroundColor="@android:color/white">
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -208,44 +228,50 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Attachments"
-                        android:textStyle="bold"
-                        android:textSize="14sp"
-                        android:textColor="#111827" />
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
 
                     <LinearLayout
                         android:id="@+id/attachmentRow"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:padding="12dp"
-                        android:orientation="horizontal"
+                        android:background="?attr/colorSurfaceContainerHigh"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:gravity="center_vertical"
-                        android:background="#F3F4F6">
+                        android:orientation="horizontal"
+                        android:padding="12dp">
 
-                        <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="?attr/colorSecondary"
+                            android:padding="4dp"
+                            android:scaleType="centerInside"
                             android:src="@android:drawable/ic_menu_save"
-                            android:tint="#1E3A8A" />
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                            app:tint="?attr/colorOnSecondary" />
 
                         <TextView
                             android:id="@+id/tvAttachmentName"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
                             android:layout_weight="1"
-                            android:layout_marginStart="10dp"
                             android:text="assignment_guidelines.pdf"
-                            android:textSize="13sp"
-                            android:textColor="#111827" />
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp" />
 
                         <TextView
                             android:id="@+id/tvView"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="View"
-                            android:textStyle="bold"
-                            android:textSize="13sp"
-                            android:textColor="#1E3A8A" />
+                            android:textColor="?attr/colorPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                 </LinearLayout>

@@ -4,48 +4,56 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F2F2F2">
+    android:background="?android:attr/colorBackground">
 
-    <!-- Header -->
+    <!-- Header with Material 3 Elevation -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="70dp"
-        android:background="#24439B"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="16dp"
+        android:elevation="4dp">
 
         <ImageView
             android:id="@+id/btnBack"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@android:drawable/ic_media_previous"
-            android:tint="@android:color/white"
-            android:contentDescription="Back" />
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_back"
+            android:tint="?attr/colorOnPrimary"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Navigate back"
+            android:scaleType="centerInside" />
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
             android:text="Browse Assignments"
-            android:textColor="@android:color/white"
-            android:textSize="22sp"
+            android:textColor="?attr/colorOnPrimary"
+            android:textSize="20sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Chips -->
+    <!-- Filter Chips -->
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fillViewport="true"
-        android:scrollbars="none">
+        android:scrollbars="none"
+        android:overScrollMode="never">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="12dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp">
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipAll"
@@ -53,8 +61,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="All"
-                android:textColor="@android:color/white"
-                app:chipBackgroundColor="#24439B" />
+                android:textColor="?attr/colorOnPrimary"
+                app:chipBackgroundColor="?attr/colorPrimary"
+                app:chipIconTint="?attr/colorOnPrimary" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipMathematics"
@@ -63,8 +72,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:text="Mathematics"
-                android:textColor="#333333"
-                app:chipBackgroundColor="#EEEEEE" />
+                app:chipBackgroundColor="?attr/colorSurfaceContainerLow" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipScience"
@@ -73,8 +81,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:text="Science"
-                android:textColor="#333333"
-                app:chipBackgroundColor="#EEEEEE" />
+                app:chipBackgroundColor="?attr/colorSurfaceContainerLow" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipLiterature"
@@ -83,24 +90,27 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:text="Literature"
-                android:textColor="#333333"
-                app:chipBackgroundColor="#EEEEEE" />
+                app:chipBackgroundColor="?attr/colorSurfaceContainerLow" />
         </LinearLayout>
     </HorizontalScrollView>
 
+    <!-- Material 3 Divider -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#D9D9D9" />
+        android:background="?attr/colorOutlineVariant" />
 
     <!-- Assignment List -->
     <androidx.recyclerview.widget.RecyclerView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:padding="12dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
         android:clipToPadding="false"
-        android:id="@+id/recyclerAssignments"
-        />
+        android:overScrollMode="never"
+        android:id="@+id/recyclerAssignments" />
 
 </LinearLayout>

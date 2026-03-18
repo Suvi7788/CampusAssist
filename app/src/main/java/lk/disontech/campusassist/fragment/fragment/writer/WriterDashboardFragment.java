@@ -55,9 +55,9 @@ public class WriterDashboardFragment extends Fragment {
         View cardProfile = view.findViewById(R.id.card_profile);
         View cardNotifications = view.findViewById(R.id.card_notifications);
 
-        ImageView menuIcon = view.findViewById(R.id.ivMenu);
+        com.google.android.material.appbar.MaterialToolbar topAppBar = view.findViewById(R.id.topAppBar);
 
-        menuIcon.setOnClickListener(v -> {
+        topAppBar.setNavigationOnClickListener(v -> {
             if (navigator != null) navigator.openDrawerOrMenu();
         });
 

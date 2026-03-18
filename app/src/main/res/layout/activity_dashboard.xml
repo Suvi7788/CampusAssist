@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/md_theme_surface"
+    android:background="?attr/colorSurface"
     tools:context=".activity.DashboardActivity">
 
     <FrameLayout
@@ -21,9 +21,9 @@
         android:id="@+id/bottomNavigationView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@android:color/white"
-        app:itemIconTint="@color/cardview_light_background"
-        app:itemTextColor="@color/design_default_color_primary"
+        android:background="?attr/colorSurfaceContainerHigh"
+        app:itemIconTint="?attr/colorOnSurfaceVariant"
+        app:itemTextColor="?attr/colorOnSurfaceVariant"
         app:menu="@menu/bottom_nav"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"

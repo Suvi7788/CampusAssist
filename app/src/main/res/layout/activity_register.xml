@@ -4,12 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="#EEF3F8">
+    android:background="@color/md_theme_background">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="18dp">
+        android:padding="16dp">
 
         <!-- Top icon circle -->
         <com.google.android.material.card.MaterialCardView

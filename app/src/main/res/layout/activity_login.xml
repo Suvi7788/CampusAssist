@@ -4,12 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="#EEF3F8">
+    android:background="@color/md_theme_background">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="18dp">
+        android:padding="16dp">
 
         <!-- Top icon circle -->
         <com.google.android.material.card.MaterialCardView
@@ -17,18 +17,19 @@
             android:layout_width="76dp"
             android:layout_height="76dp"
             app:cardCornerRadius="38dp"
-            app:cardElevation="6dp"
-            app:cardBackgroundColor="#1E3A8A"
+            app:cardElevation="8dp"
+            app:cardBackgroundColor="?attr/colorPrimary"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="24dp">
 
             <ImageView
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:padding="18dp"
                 android:src="@drawable/ic_graduation"
-                android:tint="@android:color/white"
+                android:tint="?attr/colorOnPrimary"
                 android:contentDescription="Logo" />
         </com.google.android.material.card.MaterialCardView>
 
@@ -40,11 +41,11 @@
             android:text="CampusAssist"
             android:textStyle="bold"
             android:textSize="28sp"
-            android:textColor="#1E3A8A"
+            android:textColor="?attr/colorPrimary"
             app:layout_constraintTop_toBottomOf="@id/logoCircle"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="14dp"/>
+            android:layout_marginTop="20dp"/>
 
         <!-- Subtitle -->
         <TextView
@@ -52,25 +53,25 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Academic Assignment Marketplace"
-            android:textSize="12sp"
-            android:textColor="#6B7280"
+            android:textSize="13sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
             app:layout_constraintTop_toBottomOf="@id/tvTitle"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="6dp"/>
+            android:layout_marginTop="8dp"/>
 
         <!-- Login Card -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/loginCard"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="6dp"
-            app:cardBackgroundColor="@android:color/white"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="8dp"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerLowest"
             app:layout_constraintTop_toBottomOf="@id/tvSubTitle"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="24dp">
+            android:layout_marginTop="32dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -85,17 +86,17 @@
                     android:text="Welcome Back"
                     android:textStyle="bold"
                     android:textSize="18sp"
-                    android:textColor="#111827"
+                    android:textColor="?attr/colorOnSurface"
                     android:layout_gravity="center_horizontal"/>
 
                 <!-- Role pills container -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="16dp"
                     app:cardCornerRadius="22dp"
                     app:cardElevation="0dp"
-                    app:cardBackgroundColor="#F3F4F6">
+                    app:cardBackgroundColor="?attr/colorSurfaceContainer">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -129,7 +130,7 @@
                     android:layout_height="wrap_content"
                     android:text="Logging in as: Student"
                     android:textSize="11sp"
-                    android:textColor="#6B7280"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginTop="10dp"
                     android:layout_gravity="center_horizontal"/>
 
@@ -138,21 +139,22 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Email Address"
-                    android:textColor="#111827"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="12sp"
                     android:layout_marginTop="16dp"/>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="8dp"
                     app:boxBackgroundMode="filled"
-                    app:boxBackgroundColor="#F3F4F6"
+                    app:boxBackgroundColor="?attr/colorSurfaceContainer"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusBottomEnd="16dp"
-                    app:hintEnabled="false">
+                    app:hintEnabled="false"
+                    app:boxStrokeColor="?attr/colorOutline">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmail"
@@ -168,21 +170,22 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Password"
-                    android:textColor="#111827"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="12sp"
-                    android:layout_marginTop="12dp"/>
+                    android:layout_marginTop="16dp"/>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="8dp"
                     app:boxBackgroundMode="filled"
-                    app:boxBackgroundColor="#F3F4F6"
+                    app:boxBackgroundColor="?attr/colorSurfaceContainer"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:hintEnabled="false"
+                    app:boxStrokeColor="?attr/colorOutline"
                     app:endIconMode="password_toggle">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -201,10 +204,10 @@
                     android:layout_height="48dp"
                     android:text="Login"
                     android:textAllCaps="false"
-                    android:layout_marginTop="16dp"
+                    android:layout_marginTop="20dp"
                     app:cornerRadius="24dp"
-                    app:backgroundTint="#1E3A8A"
-                    android:textColor="@android:color/white"/>
+                    app:backgroundTint="?attr/colorPrimary"
+                    android:textColor="?attr/colorOnPrimary"/>
 
                 <!-- Register link -->
                 <LinearLayout
@@ -212,14 +215,14 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="14dp">
+                    android:layout_marginTop="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Don't have an account? "
                         android:textSize="12sp"
-                        android:textColor="#6B7280"/>
+                        android:textColor="?attr/colorOnSurfaceVariant"/>
 
                     <TextView
                         android:id="@+id/tvRegister"
@@ -228,7 +231,7 @@
                         android:text="Register here"
                         android:textSize="12sp"
                         android:textStyle="bold"
-                        android:textColor="#1E3A8A"/>
+                        android:textColor="?attr/colorPrimary"/>
                 </LinearLayout>
 
             </LinearLayout>

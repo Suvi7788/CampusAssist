@@ -59,4 +59,9 @@
         <item name="backgroundTint">@color/role_pill_bg</item>
         <item name="android:textColor">@color/role_pill_text</item>
     </style>
+    <!-- Overlay to ensure the buttons in the toggle group are rounded -->
+    <style name="ShapeAppearance.Material3.Corner.Full"
+        parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerSize">50%</item>
+    </style>
 </resources>

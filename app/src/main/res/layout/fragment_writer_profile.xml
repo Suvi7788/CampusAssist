@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="#F3F4F6">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -17,25 +17,31 @@
             android:id="@+id/topAppBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#1E3A8A"
-            android:minHeight="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            android:minHeight="56dp"
+            android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
             app:navigationIcon="@android:drawable/ic_media_previous"
             app:title="Writer Profile"
-            app:titleTextColor="@android:color/white" />
+            app:titleCentered="true"
+            app:titleTextColor="?attr/colorOnPrimary" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="24dp">
 
             <!-- Profile Card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="3dp"
-                app:cardBackgroundColor="@android:color/white">
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -54,7 +60,7 @@
                             android:id="@+id/imgAvatar"
                             android:layout_width="54dp"
                             android:layout_height="54dp"
-                            android:background="#1E3A8A"
+                            android:background="?attr/colorPrimary"
                             app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
                         <TextView
@@ -66,7 +72,7 @@
                             android:text="SJ"
                             android:textStyle="bold"
                             android:textSize="15sp"
-                            android:textColor="@android:color/white" />
+                            android:textColor="?attr/colorOnPrimary" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -81,17 +87,17 @@
                                 android:layout_height="wrap_content"
                                 android:text="Dr. Sarah Johnson"
                                 android:textStyle="bold"
-                                android:textSize="16sp"
-                                android:textColor="#111827" />
+                                android:textSize="18sp"
+                                android:textColor="?attr/colorOnSurface" />
 
                             <TextView
                                 android:id="@+id/tvField"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
+                                android:layout_marginTop="4dp"
                                 android:text="Mathematics and Statistics"
-                                android:textSize="12.5sp"
-                                android:textColor="#6B7280" />
+                                android:textSize="14sp"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
 
                             <LinearLayout
                                 android:layout_width="wrap_content"
@@ -100,11 +106,15 @@
                                 android:orientation="horizontal"
                                 android:gravity="center_vertical">
 
-                                <ImageView
+                                <com.google.android.material.imageview.ShapeableImageView
                                     android:layout_width="16dp"
                                     android:layout_height="16dp"
+                                    android:background="?attr/colorTertiary"
+                                    android:padding="2dp"
+                                    android:scaleType="centerInside"
                                     android:src="@android:drawable/btn_star_big_on"
-                                    android:tint="#F59E0B" />
+                                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                                    app:tint="?attr/colorOnTertiary" />
 
                                 <TextView
                                     android:id="@+id/tvRating"
@@ -113,8 +123,8 @@
                                     android:layout_marginStart="6dp"
                                     android:text="4.9"
                                     android:textStyle="bold"
-                                    android:textSize="12.5sp"
-                                    android:textColor="#111827" />
+                                    android:textSize="14sp"
+                                    android:textColor="?attr/colorOnSurface" />
 
                                 <TextView
                                     android:id="@+id/tvReviews"
@@ -122,8 +132,8 @@
                                     android:layout_height="wrap_content"
                                     android:layout_marginStart="6dp"
                                     android:text="(127 reviews)"
-                                    android:textSize="12.5sp"
-                                    android:textColor="#6B7280" />
+                                    android:textSize="14sp"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
                             </LinearLayout>
                         </LinearLayout>
                     </LinearLayout>
@@ -132,32 +142,36 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="16dp"
                         android:orientation="horizontal">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnContact"
                             android:layout_width="0dp"
-                            android:layout_height="44dp"
+                            android:layout_height="48dp"
                             android:layout_weight="1"
                             android:text="Contact"
                             android:textAllCaps="false"
-                            app:cornerRadius="22dp"
+                            app:cornerRadius="24dp"
                             app:icon="@android:drawable/ic_dialog_email"
                             app:iconPadding="8dp"
-                            android:backgroundTint="#1E3A8A"
-                            android:textColor="@android:color/white" />
+                            android:textColor="?attr/colorOnPrimary"
+                            app:backgroundTint="?attr/colorPrimary"
+                            style="?attr/materialButtonStyle" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnPortfolio"
                             android:layout_width="0dp"
-                            android:layout_height="44dp"
+                            android:layout_height="48dp"
                             android:layout_weight="1"
                             android:layout_marginStart="12dp"
                             android:text="View Portfolio"
                             android:textAllCaps="false"
-                            app:cornerRadius="22dp"
-                            style="@style/Widget.Material3.Button.OutlinedButton" />
+                            app:cornerRadius="24dp"
+                            app:strokeColor="?attr/colorOutline"
+                            app:strokeWidth="1dp"
+                            android:textColor="?attr/colorPrimary"
+                            style="?attr/materialButtonOutlinedStyle" />
                     </LinearLayout>
 
                 </LinearLayout>
@@ -167,10 +181,11 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="3dp"
-                app:cardBackgroundColor="@android:color/white">
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -183,13 +198,13 @@
                         android:layout_height="wrap_content"
                         android:text="Statistics"
                         android:textStyle="bold"
-                        android:textSize="14sp"
-                        android:textColor="#111827" />
+                        android:textSize="16sp"
+                        android:textColor="?attr/colorOnSurface" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="16dp"
                         android:orientation="horizontal">
 
                         <!-- Completed -->
@@ -200,27 +215,32 @@
                             android:gravity="center"
                             android:orientation="vertical">
 
-                            <ImageView
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
+                            <com.google.android.material.imageview.ShapeableImageView
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:background="?attr/colorSecondary"
+                                android:padding="6dp"
+                                android:scaleType="centerInside"
                                 android:src="@android:drawable/checkbox_on_background"
-                                android:tint="#10B981" />
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                                app:tint="?attr/colorOnSecondary" />
 
                             <TextView
                                 android:id="@+id/tvCompleted"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
+                                android:layout_marginTop="8dp"
                                 android:text="145"
                                 android:textStyle="bold"
-                                android:textColor="#111827" />
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="16sp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Completed"
                                 android:textSize="12sp"
-                                android:textColor="#6B7280" />
+                                android:textColor="?attr/colorOnSurfaceVariant" />
                         </LinearLayout>
 
                         <!-- Rating -->
@@ -231,27 +251,32 @@
                             android:gravity="center"
                             android:orientation="vertical">
 
-                            <ImageView
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
+                            <com.google.android.material.imageview.ShapeableImageView
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:background="?attr/colorTertiary"
+                                android:padding="6dp"
+                                android:scaleType="centerInside"
                                 android:src="@android:drawable/btn_star_big_on"
-                                android:tint="#F59E0B" />
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                                app:tint="?attr/colorOnTertiary" />
 
                             <TextView
                                 android:id="@+id/tvStatRating"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
+                                android:layout_marginTop="8dp"
                                 android:text="4.9"
                                 android:textStyle="bold"
-                                android:textColor="#111827" />
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="16sp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Rating"
                                 android:textSize="12sp"
-                                android:textColor="#6B7280" />
+                                android:textColor="?attr/colorOnSurfaceVariant" />
                         </LinearLayout>
 
                         <!-- Top % -->
@@ -262,27 +287,32 @@
                             android:gravity="center"
                             android:orientation="vertical">
 
-                            <ImageView
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
+                            <com.google.android.material.imageview.ShapeableImageView
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:background="?attr/colorPrimary"
+                                android:padding="6dp"
+                                android:scaleType="centerInside"
                                 android:src="@android:drawable/ic_menu_myplaces"
-                                android:tint="#1E3A8A" />
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                                app:tint="?attr/colorOnPrimary" />
 
                             <TextView
                                 android:id="@+id/tvTopPercent"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
+                                android:layout_marginTop="8dp"
                                 android:text="Top 5%"
                                 android:textStyle="bold"
-                                android:textColor="#111827" />
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="16sp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Writer"
                                 android:textSize="12sp"
-                                android:textColor="#6B7280" />
+                                android:textColor="?attr/colorOnSurfaceVariant" />
                         </LinearLayout>
 
                     </LinearLayout>
@@ -293,10 +323,11 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="16dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="3dp"
-                app:cardBackgroundColor="@android:color/white">
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -309,50 +340,54 @@
                         android:layout_height="wrap_content"
                         android:text="About"
                         android:textStyle="bold"
-                        android:textSize="14sp"
-                        android:textColor="#111827" />
+                        android:textSize="16sp"
+                        android:textColor="?attr/colorOnSurface" />
 
                     <TextView
                         android:id="@+id/tvAbout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:lineSpacingExtra="3dp"
+                        android:layout_marginTop="12dp"
+                        android:lineSpacingExtra="4dp"
                         android:text="About text here..."
-                        android:textSize="13sp"
-                        android:textColor="#6B7280" />
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <!-- Education row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="16dp"
                         android:orientation="horizontal"
                         android:gravity="center_vertical">
 
-                        <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="?attr/colorSecondary"
+                            android:padding="4dp"
+                            android:scaleType="centerInside"
                             android:src="@android:drawable/ic_menu_agenda"
-                            android:tint="#6B7280" />
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                            app:tint="?attr/colorOnSecondary" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="10dp"
+                            android:layout_marginStart="12dp"
                             android:text="Education:"
-                            android:textSize="12.5sp"
-                            android:textColor="#6B7280" />
+                            android:textSize="14sp"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
 
                         <TextView
                             android:id="@+id/tvEducation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
+                            android:layout_marginStart="8dp"
                             android:text="Ph.D. Mathematics, MIT"
                             android:textStyle="bold"
-                            android:textSize="12.5sp"
-                            android:textColor="#111827" />
+                            android:textSize="14sp"
+                            android:textColor="?attr/colorOnSurface" />
                     </LinearLayout>
 
                 </LinearLayout>
