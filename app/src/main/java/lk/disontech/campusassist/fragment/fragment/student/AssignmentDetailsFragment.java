@@ -1,5 +1,7 @@
 package lk.disontech.campusassist.fragment.fragment.student;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,6 +22,7 @@ public class AssignmentDetailsFragment extends Fragment {
 
     private TextView tvTitle, tvSubject, tvDeadline, tvStudent, tvDescription, tvAttachmentName, tvView;
     private LinearLayout attachmentRow;
+    private String fileUrl = "";
 
     @Nullable
     @Override
@@ -41,28 +44,58 @@ public class AssignmentDetailsFragment extends Fragment {
         tvView = view.findViewById(R.id.tvView);
         attachmentRow = view.findViewById(R.id.attachmentRow);
 
-        // Dummy data (later you can pass arguments from MyAssignmentsFragment)
-        tvTitle.setText("Research Paper on Climate Change");
-        tvSubject.setText("Environmental Science");
-        tvDeadline.setText("Feb 28, 2026");
-        tvStudent.setText("John Doe");
+        // Get data from Bundle arguments passed from MyAssignmentsFragment
+        Bundle args = getArguments();
+        if (args != null) {
+            String title = args.getString("title", "");
+            String subject = args.getString("subject", "");
+            String deadline = args.getString("deadline", "");
+            String description = args.getString("description", "");
+            String fileName = args.getString("fileName", "");
+            fileUrl = args.getString("fileUrl", "");
 
-        tvDescription.setText(
-                "Write a comprehensive research paper on the impact of climate change on global ecosystems.\n\n" +
-                        "The paper should be 10–15 pages long, APA format, with at least 10 scholarly sources. " +
-                        "Cover topics including greenhouse gases, biodiversity loss, and potential mitigation strategies."
-        );
+            // Set the UI with actual data
+            tvTitle.setText(title);
+            tvSubject.setText(subject);
+            tvDeadline.setText(deadline);
+            tvDescription.setText(description);
 
-        tvAttachmentName.setText("assignment_guidelines.pdf");
+            // Handle attachment display
+            if (fileName != null && !fileName.isEmpty()) {
+                tvAttachmentName.setText(fileName);
+                attachmentRow.setVisibility(View.VISIBLE);
+            } else {
+                attachmentRow.setVisibility(View.GONE);
+            }
+        } else {
+            // Show placeholder if no data provided
+            tvTitle.setText("Assignment Details");
+            tvDescription.setText("No assignment data available");
+            attachmentRow.setVisibility(View.GONE);
+        }
 
-        attachmentRow.setOnClickListener(v ->
-                Toast.makeText(getContext(), "Open attachment: assignment_guidelines.pdf", Toast.LENGTH_SHORT).show()
-        );
+        // Handle attachment row click
+        attachmentRow.setOnClickListener(v -> openAttachment());
 
-        tvView.setOnClickListener(v ->
-                Toast.makeText(getContext(), "Viewing attachment...", Toast.LENGTH_SHORT).show()
-        );
+        // Handle view button click
+        tvView.setOnClickListener(v -> openAttachment());
 
         return view;
+    }
+
+    private void openAttachment() {
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            Toast.makeText(getContext(), "No file attached to this assignment", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            // Open the file URL in a browser or default app
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setData(Uri.parse(fileUrl));
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Error opening file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 }
