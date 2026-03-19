@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -141,30 +140,41 @@ public class BrowseAssignmentsFragment extends Fragment {
     private void filterAssignments(String category) {
         List<AssignmentModel> filteredList = new ArrayList<>();
 
+        if (category == null || assignmentList == null) {
+            return;
+        }
+
         if (category.equalsIgnoreCase("All")) {
             filteredList.addAll(assignmentList);
         } else if (category.equalsIgnoreCase("Mathematics")) {
             for (AssignmentModel item : assignmentList) {
-                if (item.getSubject().equalsIgnoreCase("Mathematics")) {
+                if (item != null && item.getSubject() != null 
+                        && item.getSubject().equalsIgnoreCase("Mathematics")) {
                     filteredList.add(item);
                 }
             }
         } else if (category.equalsIgnoreCase("Science")) {
             for (AssignmentModel item : assignmentList) {
-                if (item.getSubject().equalsIgnoreCase("Environmental Science")
-                        || item.getSubject().equalsIgnoreCase("Computer Science")
-                        || item.getSubject().toLowerCase().contains("science")) {
-                    filteredList.add(item);
+                if (item != null && item.getSubject() != null) {
+                    String subject = item.getSubject().toLowerCase();
+                    if (subject.equalsIgnoreCase("Environmental Science")
+                            || subject.equalsIgnoreCase("Computer Science")
+                            || subject.contains("science")) {
+                        filteredList.add(item);
+                    }
                 }
             }
         } else if (category.equalsIgnoreCase("Literature")) {
             for (AssignmentModel item : assignmentList) {
-                if (item.getSubject().equalsIgnoreCase("Literature")) {
+                if (item != null && item.getSubject() != null 
+                        && item.getSubject().equalsIgnoreCase("Literature")) {
                     filteredList.add(item);
                 }
             }
         }
 
-        assignmentAdapter.updateList(filteredList);
+        if (assignmentAdapter != null) {
+            assignmentAdapter.updateList(filteredList);
+        }
     }
 }

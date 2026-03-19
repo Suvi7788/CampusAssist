@@ -15,13 +15,19 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
 
-import lk.disontech.campusassist.fragment.fragment.student.AssignmentDetailsFragment;
+import java.util.List;
+
 import lk.disontech.campusassist.R;
+import lk.disontech.campusassist.model.AssignmentModel;
 
 public class MyAssignmentsFragment extends Fragment {
 
     LinearLayout assignmentContainer;
+    private FirebaseAuth firebaseAuth;
+    private FirebaseFirestore firebaseFirestore;
 
     @Nullable
     @Override
@@ -31,6 +37,10 @@ public class MyAssignmentsFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_my_assignments, container, false);
 
+        // Initialize Firebase
+        firebaseAuth = FirebaseAuth.getInstance();
+        firebaseFirestore = FirebaseFirestore.getInstance();
+
         MaterialToolbar toolbar = view.findViewById(R.id.topAppBar);
         assignmentContainer = view.findViewById(R.id.assignmentContainer);
 
@@ -38,33 +48,60 @@ public class MyAssignmentsFragment extends Fragment {
                 requireActivity().onBackPressed()
         );
 
-        loadDummyAssignments(inflater);
+        // Load assignments for the logged-in student
+        loadStudentAssignments(inflater);
 
         return view;
     }
 
-    private void loadDummyAssignments(LayoutInflater inflater) {
+    private void loadStudentAssignments(LayoutInflater inflater) {
+        // Check if user is logged in
+        if (firebaseAuth.getCurrentUser() == null) {
+            Toast.makeText(requireContext(), "Please login first!", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        addAssignment(inflater, "Research Paper on Climate Change",
-                "Environmental Science", "Accepted");
+        String studentId = firebaseAuth.getCurrentUser().getUid();
 
-        addAssignment(inflater, "Calculus Problem Set",
-                "Mathematics", "Pending");
+        // Query Firestore for assignments where studentId matches the current user
+        firebaseFirestore.collection("Assignments")
+                .whereEqualTo("studentId", studentId)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<AssignmentModel> assignments = queryDocumentSnapshots.toObjects(AssignmentModel.class);
 
-        addAssignment(inflater, "Essay on Shakespeare",
-                "Literature", "Completed");
+                    if (assignments.isEmpty()) {
+                        // Show message if no assignments
+                        TextView emptyMessage = new TextView(requireContext());
+                        emptyMessage.setText("No assignments yet. Create one to get started!");
+                        emptyMessage.setTextSize(16);
+                        emptyMessage.setPadding(32, 32, 32, 32);
+                        assignmentContainer.addView(emptyMessage);
+                    } else {
+                        // Add each assignment to the container
+                        for (AssignmentModel assignment : assignments) {
+                            addAssignmentCard(inflater, assignment);
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(requireContext(), "Error loading assignments: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
 
-        addAssignment(inflater, "Data Structures Assignment",
-                "Computer Science", "Accepted");
-
-        addAssignment(inflater, "Chemistry Lab Report",
-                "Chemistry", "Pending");
+    private void addAssignmentCard(LayoutInflater inflater, AssignmentModel assignment) {
+        addAssignment(inflater,
+                assignment.getTitle(),
+                assignment.getSubject(),
+                assignment.getStatus(),
+                assignment);
     }
 
     private void addAssignment(LayoutInflater inflater,
                                String title,
                                String subject,
-                               String status) {
+                               String status,
+                               AssignmentModel assignment) {
 
         View card = inflater.inflate(R.layout.item_assignment_card, assignmentContainer, false);
 
@@ -79,6 +116,9 @@ public class MyAssignmentsFragment extends Fragment {
 
         // Change badge color based on status
         switch (status) {
+            case "Open":
+                tvStatus.setBackgroundColor(Color.parseColor("#10B981"));
+                break;
             case "Accepted":
                 tvStatus.setBackgroundColor(Color.parseColor("#10B981"));
                 break;
@@ -91,13 +131,14 @@ public class MyAssignmentsFragment extends Fragment {
         }
 
         btnView.setOnClickListener(v -> {
-//                Toast.makeText(getContext(),
-//                        "Viewing: " + title,
-//                        Toast.LENGTH_SHORT).show()
                     Bundle b = new Bundle();
-                    b.putString("title", title);
-                    b.putString("subject", subject);
-                    b.putString("status", status);
+                    b.putString("title", assignment.getTitle());
+                    b.putString("subject", assignment.getSubject());
+                    b.putString("status", assignment.getStatus());
+                    b.putString("description", assignment.getDescription());
+                    b.putString("deadline", assignment.getDeadline());
+                    b.putString("fileUrl", assignment.getFileUrl());
+                    b.putString("fileName", assignment.getFileName());
 
                     AssignmentDetailsFragment fragment = new AssignmentDetailsFragment();
                     fragment.setArguments(b);
