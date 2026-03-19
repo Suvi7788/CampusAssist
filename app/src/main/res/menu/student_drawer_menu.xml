@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@android:drawable/ic_menu_view"
+        android:title="Dashboard" />
+
+    <item
+        android:id="@+id/nav_post_assignment"
+        android:icon="@android:drawable/ic_input_add"
+        android:title="Post New Assignment" />
+
+    <item
+        android:id="@+id/nav_my_assignments"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="My Assignments" />
+
+    <item
+        android:id="@+id/nav_browse_writers"
+        android:icon="@android:drawable/ic_menu_search"
+        android:title="Browse Writers" />
+
+    <item
+        android:id="@+id/nav_notifications"
+        android:icon="@android:drawable/ic_dialog_info"
+        android:title="Notifications" />
+
+    <item
+        android:id="@+id/nav_help"
+        android:icon="@android:drawable/ic_menu_help"
+        android:title="Help and Guidelines" />
+
+    <item
+        android:id="@+id/nav_logout"
+        android:icon="@android:drawable/ic_lock_power_off"
+        android:title="Logout" />
+
+</menu>
