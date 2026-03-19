@@ -58,24 +58,54 @@ public class BrowseAssignmentsFragment extends Fragment {
         recyclerAssignments.setLayoutManager(new LinearLayoutManager(getContext()));
 
         assignmentList = new ArrayList<>();
-        assignmentList.add(new AssignmentModel(
-                "Research Paper on Climate Change",
-                "Environmental Science",
-                "Feb 28, 2026",
-                "$150-$200"
-        ));
-        assignmentList.add(new AssignmentModel(
-                "Calculus Problem Set",
-                "Mathematics",
-                "Feb 25, 2026",
-                "$80-$120"
-        ));
-        assignmentList.add(new AssignmentModel(
-                "Machine Learning Project",
-                "Computer Science",
-                "Mar 5, 2026",
-                "$250-$350"
-        ));
+        assignmentList.add(AssignmentModel.builder()
+                .assignmentId("1")
+                .studentId("student1")
+                .studentName("John Doe")
+                .studentEmail("john@university.edu")
+                .title("Research Paper on Climate Change")
+                .subject("Environmental Science")
+                .description("Write a comprehensive research paper on climate change impacts")
+                .deadline("Feb 28, 2026")
+                .fileUrl("")
+                .fileName("")
+                .createdAt(System.currentTimeMillis())
+                .updatedAt(System.currentTimeMillis())
+                .status("Open")
+                .build()
+        );
+        assignmentList.add(AssignmentModel.builder()
+                .assignmentId("2")
+                .studentId("student2")
+                .studentName("Jane Smith")
+                .studentEmail("jane@university.edu")
+                .title("Calculus Problem Set")
+                .subject("Mathematics")
+                .description("Complete 50 calculus problems from chapters 5-8")
+                .deadline("Feb 25, 2026")
+                .fileUrl("")
+                .fileName("")
+                .createdAt(System.currentTimeMillis())
+                .updatedAt(System.currentTimeMillis())
+                .status("Open")
+                .build()
+        );
+        assignmentList.add(AssignmentModel.builder()
+                .assignmentId("3")
+                .studentId("student3")
+                .studentName("Bob Wilson")
+                .studentEmail("bob@university.edu")
+                .title("Machine Learning Project")
+                .subject("Computer Science")
+                .description("Build a neural network to classify images")
+                .deadline("Mar 5, 2026")
+                .fileUrl("")
+                .fileName("")
+                .createdAt(System.currentTimeMillis())
+                .updatedAt(System.currentTimeMillis())
+                .status("Open")
+                .build()
+        );
 
         assignmentAdapter = new AssignmentAdapter(getContext(), assignmentList, model -> {
 
@@ -83,7 +113,8 @@ public class BrowseAssignmentsFragment extends Fragment {
             b.putString("title", model.getTitle());
             b.putString("subject", model.getSubject());
             b.putString("deadline", model.getDeadline());
-            b.putString("budget", model.getBudget());
+            b.putString("description", model.getDescription());
+            b.putString("studentName", model.getStudentName());
             b.putString("status", "Accepted");
 
             AssignmentDetailsFragment fragment = new AssignmentDetailsFragment();

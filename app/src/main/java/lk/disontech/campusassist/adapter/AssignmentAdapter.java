@@ -51,7 +51,7 @@ public class AssignmentAdapter extends RecyclerView.Adapter<AssignmentAdapter.As
         holder.tvTitle.setText(model.getTitle());
         holder.tvSubject.setText(model.getSubject());
         holder.tvDeadline.setText("Deadline: " + model.getDeadline());
-        holder.tvBudget.setText("Budget: " + model.getBudget());
+        holder.tvBudget.setText("Posted by: " + model.getStudentName());
 
         holder.btnAccept.setOnClickListener(v -> {
             if (listener != null) {

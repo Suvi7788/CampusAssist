@@ -1,32 +1,26 @@
 package lk.disontech.campusassist.model;
 
-public class AssignmentModel {
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class AssignmentModel {
+    private String assignmentId;
+    private String studentId;
+    private String studentName;
+    private String studentEmail;
     private String title;
     private String subject;
+    private String description;
     private String deadline;
-    private String budget;
-
-    public AssignmentModel(String title, String subject, String deadline, String budget) {
-        this.title = title;
-        this.subject = subject;
-        this.deadline = deadline;
-        this.budget = budget;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public String getSubject() {
-        return subject;
-    }
-
-    public String getDeadline() {
-        return deadline;
-    }
-
-    public String getBudget() {
-        return budget;
-    }
+    private String fileUrl;
+    private String fileName;
+    private long createdAt;
+    private long updatedAt;
+    private String status; // "Open", "Assigned", "Completed"
 }
