@@ -39,59 +39,24 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Filter Chips -->
+    <!-- Filter Chips - Dynamic -->
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:scrollbars="none"
-        android:overScrollMode="never">
+        android:overScrollMode="never"
+        android:id="@+id/chipScrollView">
 
-        <LinearLayout
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroup"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:paddingTop="16dp"
-            android:paddingBottom="16dp">
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chipAll"
-                style="@style/Widget.MaterialComponents.Chip.Choice"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="All"
-                android:textColor="?attr/colorOnPrimary"
-                app:chipBackgroundColor="?attr/colorPrimary"
-                app:chipIconTint="?attr/colorOnPrimary" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chipMathematics"
-                style="@style/Widget.MaterialComponents.Chip.Choice"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="Mathematics"
-                app:chipBackgroundColor="?attr/colorSurfaceContainerLow" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chipScience"
-                style="@style/Widget.MaterialComponents.Chip.Choice"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="Science"
-                app:chipBackgroundColor="?attr/colorSurfaceContainerLow" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chipLiterature"
-                style="@style/Widget.MaterialComponents.Chip.Choice"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="Literature"
-                app:chipBackgroundColor="?attr/colorSurfaceContainerLow" />
-        </LinearLayout>
+            android:paddingBottom="16dp"
+            app:singleSelection="true" />
     </HorizontalScrollView>
 
     <!-- Material 3 Divider -->
@@ -99,6 +64,27 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="?attr/colorOutlineVariant" />
+
+    <!-- Loading Progress Bar -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:layout_marginTop="32dp" />
+
+    <!-- No Data Message -->
+    <TextView
+        android:id="@+id/tvNoData"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:text="No assignments available"
+        android:textSize="16sp"
+        android:textColor="?attr/colorOnSurface"
+        android:gravity="center"
+        android:visibility="gone" />
 
     <!-- Assignment List -->
     <androidx.recyclerview.widget.RecyclerView
