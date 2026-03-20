@@ -100,13 +100,24 @@ public class MyAssignmentsFragment extends Fragment {
                 "All", "Open", "Assigned", "In Progress", "Completed", "Pending Payment", "Rejected"
         };
 
+        Bundle args = getArguments();
+        if (args != null) {
+            String initialFilter = safe(args.getString("initialStatusFilter"));
+            for (String option : statusOptions) {
+                if (option.equalsIgnoreCase(initialFilter)) {
+                    selectedStatusFilter = option;
+                    break;
+                }
+            }
+        }
+
         ArrayAdapter<String> statusAdapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_dropdown_item_1line,
                 statusOptions
         );
         actvAssignmentStatusFilter.setAdapter(statusAdapter);
-        actvAssignmentStatusFilter.setText("All", false);
+        actvAssignmentStatusFilter.setText(selectedStatusFilter, false);
 
         actvAssignmentStatusFilter.setOnItemClickListener((parent, view, position, id) -> {
             selectedStatusFilter = statusOptions[position];

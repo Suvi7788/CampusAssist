@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -12,8 +13,13 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.List;
 
 import lk.disontech.campusassist.R;
+import lk.disontech.campusassist.model.AssignmentModel;
 
 public class StudentDashboardFragment extends Fragment {
 
@@ -21,13 +27,21 @@ public class StudentDashboardFragment extends Fragment {
     public interface StudentDashboardNavigator {
         void openPostNewAssignment();
         void openMyAssignments();
-        void openBrowseWriters();
+        void openMyAssignmentsWithFilter(String status);
         void openNotifications();
         void openHelpGuidelines();
         void openDrawerOrMenu(); // for hamburger icon
     }
 
     private StudentDashboardNavigator navigator;
+    private FirebaseAuth firebaseAuth;
+    private FirebaseFirestore firebaseFirestore;
+
+    private TextView tvOpenCount;
+    private TextView tvAssignedCount;
+    private TextView tvInProgressCount;
+    private TextView tvCompletedCount;
+    private TextView tvPendingPaymentCount;
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -61,9 +75,23 @@ public class StudentDashboardFragment extends Fragment {
 
         View cardPostNew = view.findViewById(R.id.cardPostNewAssignment);
         View cardMyAssignments = view.findViewById(R.id.cardMyAssignments);
-        View cardBrowseWriters = view.findViewById(R.id.cardBrowseWriters);
         View cardNotifications = view.findViewById(R.id.cardNotifications);
         View cardHelp = view.findViewById(R.id.cardHelpGuidelines);
+
+        View cardStatOpen = view.findViewById(R.id.cardStatOpen);
+        View cardStatAssigned = view.findViewById(R.id.cardStatAssigned);
+        View cardStatInProgress = view.findViewById(R.id.cardStatInProgress);
+        View cardStatCompleted = view.findViewById(R.id.cardStatCompleted);
+        View cardStatPendingPayment = view.findViewById(R.id.cardStatPendingPayment);
+
+        tvOpenCount = view.findViewById(R.id.tvOpenCount);
+        tvAssignedCount = view.findViewById(R.id.tvAssignedCount);
+        tvInProgressCount = view.findViewById(R.id.tvInProgressCount);
+        tvCompletedCount = view.findViewById(R.id.tvCompletedCount);
+        tvPendingPaymentCount = view.findViewById(R.id.tvPendingPaymentCount);
+
+        firebaseAuth = FirebaseAuth.getInstance();
+        firebaseFirestore = FirebaseFirestore.getInstance();
 
         // Hamburger click (host can open DrawerLayout)
         toolbar.setNavigationOnClickListener(v -> {
@@ -84,11 +112,6 @@ public class StudentDashboardFragment extends Fragment {
             else showTodo("My Assignments");
         });
 
-        cardBrowseWriters.setOnClickListener(v -> {
-            if (navigator != null) navigator.openBrowseWriters();
-            else showTodo("Browse Writers");
-        });
-
         cardNotifications.setOnClickListener(v -> {
             if (navigator != null) navigator.openNotifications();
             else showTodo("Notifications");
@@ -98,6 +121,71 @@ public class StudentDashboardFragment extends Fragment {
             if (navigator != null) navigator.openHelpGuidelines();
             else showTodo("Help / Guidelines");
         });
+
+        cardStatOpen.setOnClickListener(v -> openMyAssignmentsForStatus("Open"));
+        cardStatAssigned.setOnClickListener(v -> openMyAssignmentsForStatus("Assigned"));
+        cardStatInProgress.setOnClickListener(v -> openMyAssignmentsForStatus("In Progress"));
+        cardStatCompleted.setOnClickListener(v -> openMyAssignmentsForStatus("Completed"));
+        cardStatPendingPayment.setOnClickListener(v -> openMyAssignmentsForStatus("Pending Payment"));
+
+        loadQuickStats();
+    }
+
+    private void openMyAssignmentsForStatus(String status) {
+        if (navigator != null) {
+            navigator.openMyAssignmentsWithFilter(status);
+        } else {
+            showTodo("My Assignments (" + status + ")");
+        }
+    }
+
+    private void loadQuickStats() {
+        if (firebaseAuth.getCurrentUser() == null) {
+            return;
+        }
+
+        String studentId = firebaseAuth.getCurrentUser().getUid();
+        firebaseFirestore.collection("Assignments")
+                .whereEqualTo("studentId", studentId)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<AssignmentModel> assignments = queryDocumentSnapshots.toObjects(AssignmentModel.class);
+
+                    int openCount = 0;
+                    int assignedCount = 0;
+                    int inProgressCount = 0;
+                    int completedCount = 0;
+                    int pendingPaymentCount = 0;
+
+                    for (AssignmentModel assignment : assignments) {
+                        String status = assignment != null && assignment.getStatus() != null
+                                ? assignment.getStatus().trim()
+                                : "";
+
+                        if (status.equalsIgnoreCase("Open")) {
+                            openCount++;
+                        } else if (status.equalsIgnoreCase("Assigned")) {
+                            assignedCount++;
+                        } else if (status.equalsIgnoreCase("In Progress")) {
+                            inProgressCount++;
+                        } else if (status.equalsIgnoreCase("Completed")) {
+                            completedCount++;
+                        } else if (status.equalsIgnoreCase("Pending Payment")) {
+                            pendingPaymentCount++;
+                        }
+                    }
+
+                    tvOpenCount.setText(String.valueOf(openCount));
+                    tvAssignedCount.setText(String.valueOf(assignedCount));
+                    tvInProgressCount.setText(String.valueOf(inProgressCount));
+                    tvCompletedCount.setText(String.valueOf(completedCount));
+                    tvPendingPaymentCount.setText(String.valueOf(pendingPaymentCount));
+                })
+                .addOnFailureListener(e -> Toast.makeText(
+                        requireContext(),
+                        "Failed to load quick stats",
+                        Toast.LENGTH_SHORT
+                ).show());
     }
 
     private void showTodo(String screenName) {

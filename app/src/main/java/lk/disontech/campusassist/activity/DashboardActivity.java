@@ -177,6 +177,15 @@ public class DashboardActivity extends AppCompatActivity
     }
 
     @Override
+    public void openMyAssignmentsWithFilter(String status) {
+        MyAssignmentsFragment fragment = new MyAssignmentsFragment();
+        Bundle bundle = new Bundle();
+        bundle.putString("initialStatusFilter", status);
+        fragment.setArguments(bundle);
+        openFragment(fragment);
+    }
+
+    // Kept for drawer menu navigation.
     public void openBrowseWriters() {
         openFragment(new BrowseWritersFragment());
     }
