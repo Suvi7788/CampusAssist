@@ -56,6 +56,46 @@
             android:textColor="?attr/colorOnSurfaceVariant"
             android:layout_marginTop="8dp"/>
 
+        <TextView
+            android:id="@+id/tvDueDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Due: -"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"/>
+
+        <LinearLayout
+            android:id="@+id/layoutWriterSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvWriterName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Writer: -"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnViewWriter"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="View Writer"
+                android:textAllCaps="false"
+                app:cornerRadius="20dp"
+                app:strokeColor="?attr/colorOutline"
+                app:strokeWidth="1dp"
+                android:textColor="?attr/colorPrimary"
+                style="?attr/materialButtonOutlinedStyle"/>
+        </LinearLayout>
+
         <!-- View Details Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnViewDetails"
