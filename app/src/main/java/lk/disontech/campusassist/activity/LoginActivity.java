@@ -12,6 +12,8 @@ import androidx.core.content.ContextCompat;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.Locale;
+
 import lk.disontech.campusassist.R;
 import lk.disontech.campusassist.databinding.ActivityLoginBinding;
 
@@ -121,15 +123,13 @@ public class LoginActivity extends AppCompatActivity {
                                 .addOnSuccessListener(documentSnapshot -> {
                                     if (documentSnapshot.exists()) {
                                         String userType = documentSnapshot.getString("userType");
-                                        if (userType == null) {
-                                            userType = selectedRole;
-                                        }
+                                        String normalizedRole = normalizeRole(userType, selectedRole);
 
                                         Toast.makeText(LoginActivity.this, "Login Successful!", Toast.LENGTH_SHORT).show();
 
                                         // Navigate to Dashboard with user role
                                         Intent intent = new Intent(LoginActivity.this, DashboardActivity.class);
-                                        intent.putExtra("role", userType);
+                                        intent.putExtra("role", normalizedRole);
                                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                                         startActivity(intent);
                                         finish();
@@ -157,6 +157,25 @@ public class LoginActivity extends AppCompatActivity {
     private void resetButton() {
         binding.btnLogin.setEnabled(true);
         binding.btnLogin.setText("Login");
+    }
+
+    private String normalizeRole(String roleFromUserData, String fallbackRole) {
+        String raw = roleFromUserData;
+        if (raw == null || raw.trim().isEmpty()) {
+            raw = fallbackRole;
+        }
+
+        String normalized = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        if (normalized.contains("writ")) {
+            return "writer";
+        }
+        if (normalized.contains("stud")) {
+            return "student";
+        }
+        if (normalized.contains("admin")) {
+            return "admin";
+        }
+        return "student";
     }
 
     @Override

@@ -30,7 +30,7 @@
             android:background="?attr/colorSurfaceContainerHigh"
             app:itemIconTint="?attr/colorOnSurfaceVariant"
             app:itemTextColor="?attr/colorOnSurfaceVariant"
-            app:menu="@menu/bottom_nav"
+            app:menu="@menu/bottom_nav_student"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />

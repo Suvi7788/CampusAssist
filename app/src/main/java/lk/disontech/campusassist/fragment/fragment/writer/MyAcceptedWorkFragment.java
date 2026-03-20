@@ -132,6 +132,7 @@ public class MyAcceptedWorkFragment extends Fragment {
     }
 
     private void setupFilters() {
+        applyInitialFilterFromArguments();
         refreshStatusFilterOptions();
         statusFilterAdapter = new ArrayAdapter<>(
                 requireContext(),
@@ -139,7 +140,7 @@ public class MyAcceptedWorkFragment extends Fragment {
                 statusFilterOptions
         );
         actvStatusFilter.setAdapter(statusFilterAdapter);
-        actvStatusFilter.setText("All", false);
+        actvStatusFilter.setText(selectedStatusFilter, false);
         actvStatusFilter.setOnItemClickListener((parent, view, position, id) -> {
             selectedStatusFilter = statusFilterOptions.get(position);
             applyFilters();
@@ -159,6 +160,18 @@ public class MyAcceptedWorkFragment extends Fragment {
             public void afterTextChanged(Editable s) {
             }
         });
+    }
+
+    private void applyInitialFilterFromArguments() {
+        Bundle args = getArguments();
+        if (args == null) {
+            return;
+        }
+
+        String initialFilter = safe(args.getString("initialStatusFilter"));
+        if (!initialFilter.isEmpty()) {
+            selectedStatusFilter = initialFilter;
+        }
     }
 
     private void loadMyWork() {

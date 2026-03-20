@@ -25,6 +25,7 @@
     <!-- Writer Dashboard -->
     <string name="browse_assignments">Browse Assignments</string>
     <string name="accepted_work">My Accepted Work</string>
+    <string name="writer_welcome_format">Welcome, %1$s</string>
 
     <!-- Assignment -->
     <string name="assignment_title">Assignment Title</string>

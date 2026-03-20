@@ -16,6 +16,8 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
+import java.util.Locale;
+
 import lk.disontech.campusassist.R;
 import lk.disontech.campusassist.fragment.fragment.student.BrowseWritersFragment;
 import lk.disontech.campusassist.fragment.fragment.student.HelpGuidelinesFragment;
@@ -48,10 +50,7 @@ public class DashboardActivity extends AppCompatActivity
         navigationView = findViewById(R.id.navigationView);
         bottomNavigationView = findViewById(R.id.bottomNavigationView);
 
-        String intentRole = getIntent().getStringExtra("role");
-        if (intentRole != null && !intentRole.trim().isEmpty()) {
-            role = intentRole.toLowerCase();
-        }
+        role = normalizeRole(getIntent().getStringExtra("role"));
 
         setupHeader();
         setupMenuByRole();
@@ -256,6 +255,15 @@ public class DashboardActivity extends AppCompatActivity
     }
 
     @Override
+    public void openAcceptedWorkWithFilter(String status) {
+        MyAcceptedWorkFragment fragment = new MyAcceptedWorkFragment();
+        Bundle bundle = new Bundle();
+        bundle.putString("initialStatusFilter", status);
+        fragment.setArguments(bundle);
+        openFragment(fragment);
+    }
+
+    @Override
     public void openProfile() {
         openFragment(new WriterProfileFragment());
     }
@@ -281,5 +289,16 @@ public class DashboardActivity extends AppCompatActivity
         if (drawerLayout != null) {
             drawerLayout.openDrawer(GravityCompat.START);
         }
+    }
+
+    private String normalizeRole(String rawRole) {
+        String normalized = rawRole == null ? "" : rawRole.trim().toLowerCase(Locale.ROOT);
+        if (normalized.contains("writ")) {
+            return "writer";
+        }
+        if (normalized.contains("stud")) {
+            return "student";
+        }
+        return "student";
     }
 }
