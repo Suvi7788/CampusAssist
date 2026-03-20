@@ -141,6 +141,7 @@ public class MyAssignmentsFragment extends Fragment {
                     b.putString("fileName", assignment.getFileName());
                     b.putString("assignmentId", assignment.getAssignmentId());
                     b.putString("studentId", assignment.getStudentId());
+                    b.putString("studentName", assignment.getStudentName());
 
                     AssignmentDetailsFragment fragment = new AssignmentDetailsFragment();
                     fragment.setArguments(b);

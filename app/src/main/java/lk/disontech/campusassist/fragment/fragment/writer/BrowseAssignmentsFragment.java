@@ -82,6 +82,10 @@ public class BrowseAssignmentsFragment extends Fragment {
             b.putString("deadline", model.getDeadline());
             b.putString("description", model.getDescription());
             b.putString("studentName", model.getStudentName());
+            b.putString("fileUrl", model.getFileUrl());
+            b.putString("fileName", model.getFileName());
+            b.putString("assignmentId", model.getAssignmentId());
+            b.putString("studentId", model.getStudentId());
             b.putString("status", "Accepted");
             b.putBoolean("isWriterView", true);
 

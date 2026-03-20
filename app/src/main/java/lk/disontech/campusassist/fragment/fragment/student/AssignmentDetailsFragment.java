@@ -22,14 +22,18 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -37,6 +41,10 @@ import java.util.Locale;
 import java.util.UUID;
 
 import lk.disontech.campusassist.R;
+import lk.disontech.campusassist.adapter.BidWriterAdapter;
+import lk.disontech.campusassist.model.BidModel;
+import lk.disontech.campusassist.model.User;
+import lk.disontech.campusassist.repository.BidRepository;
 
 public class AssignmentDetailsFragment extends Fragment {
 
@@ -48,10 +56,17 @@ public class AssignmentDetailsFragment extends Fragment {
     private LinearLayout attachmentRow;
     private LinearLayout detailsViewLayout, editModeLayout;
     private LinearLayout attachmentEditRow;
+    private MaterialCardView studentBidsSection;
+    private RecyclerView recyclerBids;
+    private TextView tvNoBids;
     private MaterialButton btnEdit, btnDelete, btnSave, btnCancel;
+    private MaterialButton btnBidForAssignment;
     private FirebaseFirestore firebaseFirestore;
     private FirebaseStorage firebaseStorage;
     private StorageReference storageReference;
+    private FirebaseAuth firebaseAuth;
+    private BidRepository bidRepository;
+    private BidWriterAdapter bidWriterAdapter;
     
     private String fileUrl = "";
     private String assignmentId = "";
@@ -85,6 +100,8 @@ public class AssignmentDetailsFragment extends Fragment {
         firebaseFirestore = FirebaseFirestore.getInstance();
         firebaseStorage = FirebaseStorage.getInstance();
         storageReference = firebaseStorage.getReference().child("assignments");
+        firebaseAuth = FirebaseAuth.getInstance();
+        bidRepository = new BidRepository();
 
         // Initialize Progress Dialog
         progressDialog = new ProgressDialog(requireContext());
@@ -119,6 +136,15 @@ public class AssignmentDetailsFragment extends Fragment {
         btnDelete = view.findViewById(R.id.btnDelete);
         btnSave = view.findViewById(R.id.btnSave);
         btnCancel = view.findViewById(R.id.btnCancel);
+        btnBidForAssignment = view.findViewById(R.id.btnBidForAssignment);
+        studentBidsSection = view.findViewById(R.id.studentBidsSection);
+        recyclerBids = view.findViewById(R.id.recyclerBids);
+        tvNoBids = view.findViewById(R.id.tvNoBids);
+
+        bidWriterAdapter = new BidWriterAdapter(this::openDialerForWriter);
+        recyclerBids.setLayoutManager(new LinearLayoutManager(getContext()));
+        recyclerBids.setAdapter(bidWriterAdapter);
+        recyclerBids.setNestedScrollingEnabled(false);
 
         // Setup subject dropdown
         setupSubjectDropdown();
@@ -131,6 +157,7 @@ public class AssignmentDetailsFragment extends Fragment {
             String subject = args.getString("subject", "");
             String deadline = args.getString("deadline", "");
             String description = args.getString("description", "");
+            String studentName = args.getString("studentName", args.getString("student", ""));
             String fileName = args.getString("fileName", "");
             fileUrl = args.getString("fileUrl", "");
             assignmentId = args.getString("assignmentId", "");
@@ -144,6 +171,7 @@ public class AssignmentDetailsFragment extends Fragment {
             tvSubject.setText(subject);
             tvDeadline.setText(deadline);
             tvDescription.setText(description);
+            tvStudent.setText(studentName);
 
             // Set edit fields with same data
             etTitle.setText(title);
@@ -173,10 +201,7 @@ public class AssignmentDetailsFragment extends Fragment {
             isWriterView = role != null && role.equalsIgnoreCase("writer");
         }
 
-        if (isWriterView) {
-            btnEdit.setVisibility(View.GONE);
-            btnDelete.setVisibility(View.GONE);
-        }
+        applyRoleBasedUi();
 
         // Handle attachment row click
         attachmentRow.setOnClickListener(v -> openAttachment());
@@ -202,7 +227,136 @@ public class AssignmentDetailsFragment extends Fragment {
         // Handle cancel button click
         btnCancel.setOnClickListener(v -> disableEditMode());
 
+        // Handle writer bid action
+        btnBidForAssignment.setOnClickListener(v -> placeBidForAssignment());
+
         return view;
+    }
+
+    private void applyRoleBasedUi() {
+        if (studentBidsSection == null) {
+            return;
+        }
+
+        if (isWriterView) {
+            btnEdit.setVisibility(View.GONE);
+            btnDelete.setVisibility(View.GONE);
+            studentBidsSection.setVisibility(View.GONE);
+
+            if (assignmentId != null && !assignmentId.isEmpty()) {
+                btnBidForAssignment.setVisibility(View.VISIBLE);
+            } else {
+                btnBidForAssignment.setVisibility(View.GONE);
+            }
+        } else {
+            btnBidForAssignment.setVisibility(View.GONE);
+            studentBidsSection.setVisibility(View.VISIBLE);
+            loadBidsForAssignment();
+        }
+    }
+
+    private void placeBidForAssignment() {
+        if (assignmentId == null || assignmentId.isEmpty()) {
+            Toast.makeText(getContext(), "Assignment ID not found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (firebaseAuth.getCurrentUser() == null) {
+            Toast.makeText(getContext(), "Please login first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String writerId = firebaseAuth.getCurrentUser().getUid();
+        btnBidForAssignment.setEnabled(false);
+
+        firebaseFirestore.collection("Users").document(writerId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (!documentSnapshot.exists()) {
+                        btnBidForAssignment.setEnabled(true);
+                        Toast.makeText(getContext(), "Writer profile not found", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    User writer = documentSnapshot.toObject(User.class);
+                    String firstName = writer != null && writer.getFirstName() != null ? writer.getFirstName().trim() : "";
+                    String lastName = writer != null && writer.getLastName() != null ? writer.getLastName().trim() : "";
+                    String writerName = (firstName + " " + lastName).trim();
+                    if (writerName.isEmpty()) {
+                        writerName = writer != null && writer.getEmail() != null ? writer.getEmail() : "Writer";
+                    }
+
+                    BidModel bidModel = BidModel.builder()
+                            .assignmentId(assignmentId)
+                            .studentId(studentId)
+                            .writerId(writerId)
+                            .writerName(writerName)
+                            .writerEmail(writer != null ? writer.getEmail() : "")
+                            .writerMobile(writer != null ? writer.getMobile() : "")
+                            .createdAt(System.currentTimeMillis())
+                            .status("Pending")
+                            .build();
+
+                    bidRepository.createBid(bidModel, new BidRepository.OnBidActionCallback() {
+                        @Override
+                        public void onSuccess() {
+                            btnBidForAssignment.setText("Bid Submitted");
+                            btnBidForAssignment.setEnabled(false);
+                            Toast.makeText(getContext(), "Bid submitted successfully", Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onError(String errorMessage) {
+                            btnBidForAssignment.setEnabled(true);
+                            Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                })
+                .addOnFailureListener(e -> {
+                    btnBidForAssignment.setEnabled(true);
+                    Toast.makeText(getContext(), "Error loading profile: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void loadBidsForAssignment() {
+        if (assignmentId == null || assignmentId.isEmpty()) {
+            tvNoBids.setVisibility(View.VISIBLE);
+            tvNoBids.setText("No bids available for this assignment");
+            return;
+        }
+
+        bidRepository.getBidsByAssignment(assignmentId, new BidRepository.OnBidsLoadedCallback() {
+            @Override
+            public void onBidsLoaded(java.util.List<BidModel> bids) {
+                if (bids == null || bids.isEmpty()) {
+                    tvNoBids.setVisibility(View.VISIBLE);
+                    recyclerBids.setVisibility(View.GONE);
+                    return;
+                }
+
+                tvNoBids.setVisibility(View.GONE);
+                recyclerBids.setVisibility(View.VISIBLE);
+                bidWriterAdapter.submitList(bids);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                tvNoBids.setVisibility(View.VISIBLE);
+                recyclerBids.setVisibility(View.GONE);
+                Toast.makeText(getContext(), "Error loading bids: " + errorMessage, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void openDialerForWriter(BidModel bidModel) {
+        String mobile = bidModel != null ? bidModel.getWriterMobile() : "";
+        if (mobile == null || mobile.trim().isEmpty()) {
+            Toast.makeText(getContext(), "Writer mobile number not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(Intent.ACTION_DIAL);
+        intent.setData(Uri.parse("tel:" + mobile.trim()));
+        startActivity(intent);
     }
 
     private void setupSubjectDropdown() {
