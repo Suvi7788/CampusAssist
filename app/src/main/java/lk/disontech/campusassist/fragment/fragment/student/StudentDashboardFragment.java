@@ -42,6 +42,7 @@ public class StudentDashboardFragment extends Fragment {
     private TextView tvInProgressCount;
     private TextView tvCompletedCount;
     private TextView tvPendingPaymentCount;
+    private TextView tvWelcome;
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -89,6 +90,7 @@ public class StudentDashboardFragment extends Fragment {
         tvInProgressCount = view.findViewById(R.id.tvInProgressCount);
         tvCompletedCount = view.findViewById(R.id.tvCompletedCount);
         tvPendingPaymentCount = view.findViewById(R.id.tvPendingPaymentCount);
+        tvWelcome = view.findViewById(R.id.tvWelcome);
 
         firebaseAuth = FirebaseAuth.getInstance();
         firebaseFirestore = FirebaseFirestore.getInstance();
@@ -128,7 +130,43 @@ public class StudentDashboardFragment extends Fragment {
         cardStatCompleted.setOnClickListener(v -> openMyAssignmentsForStatus("Completed"));
         cardStatPendingPayment.setOnClickListener(v -> openMyAssignmentsForStatus("Pending Payment"));
 
+        loadWelcomeName();
         loadQuickStats();
+    }
+
+    private void loadWelcomeName() {
+        if (firebaseAuth.getCurrentUser() == null) {
+            return;
+        }
+
+        String uid = firebaseAuth.getCurrentUser().getUid();
+        firebaseFirestore.collection("Users").document(uid).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    String firstName = documentSnapshot.getString("firstName");
+                    String lastName = documentSnapshot.getString("lastName");
+
+                    String displayName = "";
+                    if (firstName != null && !firstName.trim().isEmpty()) {
+                        displayName = firstName.trim();
+                    }
+                    if (lastName != null && !lastName.trim().isEmpty()) {
+                        displayName = (displayName + " " + lastName.trim()).trim();
+                    }
+
+                    if (displayName.isEmpty() && firebaseAuth.getCurrentUser().getEmail() != null) {
+                        displayName = firebaseAuth.getCurrentUser().getEmail();
+                    }
+                    if (displayName.isEmpty()) {
+                        displayName = "Student";
+                    }
+
+                    tvWelcome.setText("Welcome back, " + displayName + "!");
+                })
+                .addOnFailureListener(e -> {
+                    if (firebaseAuth.getCurrentUser().getEmail() != null) {
+                        tvWelcome.setText("Welcome back, " + firebaseAuth.getCurrentUser().getEmail() + "!");
+                    }
+                });
     }
 
     private void openMyAssignmentsForStatus(String status) {
