@@ -1,6 +1,8 @@
 package lk.disontech.campusassist.fragment.fragment.student;
 
 import android.content.Context;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,11 +17,13 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.List;
 
 import lk.disontech.campusassist.R;
 import lk.disontech.campusassist.model.AssignmentModel;
+import lk.disontech.campusassist.repository.NotificationRepository;
 
 public class StudentDashboardFragment extends Fragment {
 
@@ -36,6 +40,8 @@ public class StudentDashboardFragment extends Fragment {
     private StudentDashboardNavigator navigator;
     private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firebaseFirestore;
+    private NotificationRepository notificationRepository;
+    private ListenerRegistration unreadCountListener;
 
     private TextView tvOpenCount;
     private TextView tvAssignedCount;
@@ -43,6 +49,7 @@ public class StudentDashboardFragment extends Fragment {
     private TextView tvCompletedCount;
     private TextView tvPendingPaymentCount;
     private TextView tvWelcome;
+    private TextView tvNotificationsBadge;
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -56,6 +63,15 @@ public class StudentDashboardFragment extends Fragment {
     public void onDetach() {
         super.onDetach();
         navigator = null;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (unreadCountListener != null) {
+            unreadCountListener.remove();
+            unreadCountListener = null;
+        }
     }
 
     @Nullable
@@ -91,9 +107,11 @@ public class StudentDashboardFragment extends Fragment {
         tvCompletedCount = view.findViewById(R.id.tvCompletedCount);
         tvPendingPaymentCount = view.findViewById(R.id.tvPendingPaymentCount);
         tvWelcome = view.findViewById(R.id.tvWelcome);
+        tvNotificationsBadge = view.findViewById(R.id.tvNotificationsBadge);
 
         firebaseAuth = FirebaseAuth.getInstance();
         firebaseFirestore = FirebaseFirestore.getInstance();
+        notificationRepository = new NotificationRepository();
 
         // Hamburger click (host can open DrawerLayout)
         toolbar.setNavigationOnClickListener(v -> {
@@ -132,6 +150,48 @@ public class StudentDashboardFragment extends Fragment {
 
         loadWelcomeName();
         loadQuickStats();
+        listenForUnreadNotificationCount();
+    }
+
+    private void listenForUnreadNotificationCount() {
+        if (firebaseAuth.getCurrentUser() == null) {
+            return;
+        }
+
+        unreadCountListener = notificationRepository.listenForUnreadCount(
+                firebaseAuth.getCurrentUser().getUid(),
+                new NotificationRepository.OnUnreadCountChangedCallback() {
+                    @Override
+                    public void onCountChanged(int unreadCount) {
+                        updateNotificationsBadge(unreadCount);
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                    }
+                }
+        );
+    }
+
+    private void updateNotificationsBadge(int unreadCount) {
+        if (tvNotificationsBadge == null) {
+            return;
+        }
+
+        if (unreadCount <= 0) {
+            tvNotificationsBadge.clearAnimation();
+            tvNotificationsBadge.setVisibility(View.GONE);
+            return;
+        }
+
+        tvNotificationsBadge.setText(String.valueOf(unreadCount));
+        tvNotificationsBadge.setVisibility(View.VISIBLE);
+
+        Animation blink = new AlphaAnimation(0.3f, 1f);
+        blink.setDuration(650);
+        blink.setRepeatMode(Animation.REVERSE);
+        blink.setRepeatCount(Animation.INFINITE);
+        tvNotificationsBadge.startAnimation(blink);
     }
 
     private void loadWelcomeName() {

@@ -35,8 +35,10 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -44,8 +46,10 @@ import java.util.UUID;
 import lk.disontech.campusassist.R;
 import lk.disontech.campusassist.adapter.BidWriterAdapter;
 import lk.disontech.campusassist.model.BidModel;
+import lk.disontech.campusassist.model.NotificationModel;
 import lk.disontech.campusassist.model.User;
 import lk.disontech.campusassist.repository.BidRepository;
+import lk.disontech.campusassist.repository.NotificationRepository;
 
 public class AssignmentDetailsFragment extends Fragment {
 
@@ -70,7 +74,9 @@ public class AssignmentDetailsFragment extends Fragment {
     private StorageReference storageReference;
     private FirebaseAuth firebaseAuth;
     private BidRepository bidRepository;
+    private NotificationRepository notificationRepository;
     private BidWriterAdapter bidWriterAdapter;
+    private final List<BidModel> currentBidList = new ArrayList<>();
     
     private String fileUrl = "";
     private String assignmentId = "";
@@ -122,6 +128,7 @@ public class AssignmentDetailsFragment extends Fragment {
         storageReference = firebaseStorage.getReference().child("assignments");
         firebaseAuth = FirebaseAuth.getInstance();
         bidRepository = new BidRepository();
+        notificationRepository = new NotificationRepository();
 
         // Initialize Progress Dialog
         progressDialog = new ProgressDialog(requireContext());
@@ -399,6 +406,16 @@ public class AssignmentDetailsFragment extends Fragment {
                     assignmentStatus = "In Progress";
                     writerWorkStatus = "In Progress";
                     setupWriterWorkSection();
+                    sendNotification(
+                            studentId,
+                            "student",
+                            "Assignment In Progress",
+                            "Work has started on your assignment " + getAssignmentTitleText() + ".",
+                            assignmentId,
+                            getAssignmentTitleText(),
+                            "In Progress",
+                            ""
+                    );
                     Toast.makeText(getContext(), "Work started", Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e -> {
@@ -450,6 +467,16 @@ public class AssignmentDetailsFragment extends Fragment {
                                         assignmentStatus = "Pending Payment";
                                         writerWorkStatus = "Pending Payment";
                                         setupWriterWorkSection();
+                                        sendNotification(
+                                                studentId,
+                                                "student",
+                                                "Work Submitted",
+                                                "Work for your assignment " + getAssignmentTitleText() + " was submitted and is now Pending Payment.",
+                                                assignmentId,
+                                                getAssignmentTitleText(),
+                                                "Pending Payment",
+                                                ""
+                                        );
                                         Toast.makeText(getContext(), "Work submitted", Toast.LENGTH_SHORT).show();
                                     })
                                     .addOnFailureListener(e -> {
@@ -490,20 +517,24 @@ public class AssignmentDetailsFragment extends Fragment {
                     }
 
                     User writer = documentSnapshot.toObject(User.class);
-                    String firstName = writer != null && writer.getFirstName() != null ? writer.getFirstName().trim() : "";
-                    String lastName = writer != null && writer.getLastName() != null ? writer.getLastName().trim() : "";
+                    String firstName = documentSnapshot.getString("firstName") != null
+                            ? documentSnapshot.getString("firstName").trim() : "";
+                    String lastName = documentSnapshot.getString("lastName") != null
+                            ? documentSnapshot.getString("lastName").trim() : "";
                     String writerName = (firstName + " " + lastName).trim();
                     if (writerName.isEmpty()) {
-                        writerName = writer != null && writer.getEmail() != null ? writer.getEmail() : "Writer";
+                        String email = documentSnapshot.getString("email");
+                        writerName = email != null && !email.trim().isEmpty() ? email : "Writer";
                     }
+                    final String writerDisplayName = writerName;
 
                     BidModel bidModel = BidModel.builder()
                             .assignmentId(assignmentId)
                             .studentId(studentId)
                             .writerId(writerId)
-                            .writerName(writerName)
-                            .writerEmail(writer != null ? writer.getEmail() : "")
-                            .writerMobile(writer != null ? writer.getMobile() : "")
+                            .writerName(writerDisplayName)
+                            .writerEmail(documentSnapshot.getString("email") != null ? documentSnapshot.getString("email") : "")
+                            .writerMobile(documentSnapshot.getString("mobile") != null ? documentSnapshot.getString("mobile") : "")
                             .createdAt(System.currentTimeMillis())
                             .status("Pending")
                             .build();
@@ -513,6 +544,26 @@ public class AssignmentDetailsFragment extends Fragment {
                         public void onSuccess() {
                             btnBidForAssignment.setText("Bid Submitted");
                             btnBidForAssignment.setEnabled(false);
+                            sendNotification(
+                                    studentId,
+                                    "student",
+                                    "New Bid Received",
+                                    writerDisplayName + " has bid on your assignment " + getAssignmentTitleText() + ".",
+                                    assignmentId,
+                                    getAssignmentTitleText(),
+                                    assignmentStatus,
+                                    ""
+                            );
+                            sendNotification(
+                                    writerId,
+                                    "writer",
+                                    "Bid Submitted",
+                                    "You successfully bid on " + getAssignmentTitleText() + " posted by " + getStudentNameText() + ".",
+                                    assignmentId,
+                                    getAssignmentTitleText(),
+                                    assignmentStatus,
+                                    "Pending Confirmation"
+                            );
                             Toast.makeText(getContext(), "Bid submitted successfully", Toast.LENGTH_SHORT).show();
                         }
 
@@ -562,8 +613,12 @@ public class AssignmentDetailsFragment extends Fragment {
         if (bids == null || bids.isEmpty()) {
             tvNoBids.setVisibility(View.VISIBLE);
             recyclerBids.setVisibility(View.GONE);
+            currentBidList.clear();
             return;
         }
+
+        currentBidList.clear();
+        currentBidList.addAll(bids);
 
         final int[] remaining = {bids.size()};
         for (BidModel bid : bids) {
@@ -682,6 +737,39 @@ public class AssignmentDetailsFragment extends Fragment {
                     @Override
                     public void onSuccess() {
                         progressDialog.dismiss();
+                        sendNotification(
+                                bidModel.getWriterId(),
+                                "writer",
+                                "Bid Accepted",
+                                "Your bid for " + getAssignmentTitleText() + " was accepted by " + getStudentNameText() + ".",
+                                assignmentId,
+                                getAssignmentTitleText(),
+                                "Assigned",
+                                "Approved"
+                        );
+
+                        for (BidModel otherBid : currentBidList) {
+                            if (otherBid == null || otherBid.getBidId() == null || otherBid.getWriterId() == null) {
+                                continue;
+                            }
+                            if (otherBid.getBidId().equals(bidModel.getBidId())) {
+                                continue;
+                            }
+                            String otherStatus = otherBid.getStatus();
+                            if (otherStatus == null || otherStatus.equalsIgnoreCase("Pending")) {
+                                sendNotification(
+                                        otherBid.getWriterId(),
+                                        "writer",
+                                        "Bid Rejected",
+                                        "Your bid for " + getAssignmentTitleText() + " was rejected by " + getStudentNameText() + ".",
+                                        assignmentId,
+                                        getAssignmentTitleText(),
+                                        "Assigned",
+                                        "Rejected"
+                                );
+                            }
+                        }
+
                         Toast.makeText(getContext(), "Bid accepted successfully", Toast.LENGTH_SHORT).show();
                         loadBidsForAssignment();
                     }
@@ -722,6 +810,16 @@ public class AssignmentDetailsFragment extends Fragment {
             @Override
             public void onSuccess() {
                 progressDialog.dismiss();
+                sendNotification(
+                        bidModel.getWriterId(),
+                        "writer",
+                        "Bid Rejected",
+                        "Your bid for " + getAssignmentTitleText() + " was rejected by " + getStudentNameText() + ".",
+                        assignmentId,
+                        getAssignmentTitleText(),
+                        assignmentStatus,
+                        "Rejected"
+                );
                 Toast.makeText(getContext(), "Bid rejected", Toast.LENGTH_SHORT).show();
                 loadBidsForAssignment();
             }
@@ -972,5 +1070,53 @@ public class AssignmentDetailsFragment extends Fragment {
         ContentResolver contentResolver = requireContext().getContentResolver();
         android.webkit.MimeTypeMap mimeTypeMap = android.webkit.MimeTypeMap.getSingleton();
         return "." + mimeTypeMap.getExtensionFromMimeType(contentResolver.getType(uri));
+    }
+
+    private void sendNotification(String recipientUserId,
+                                  String recipientRole,
+                                  String title,
+                                  String message,
+                                  String assignmentId,
+                                  String assignmentTitle,
+                                  String assignmentStatus,
+                                  String writerWorkStatus) {
+        if (recipientUserId == null || recipientUserId.trim().isEmpty()) {
+            return;
+        }
+
+        NotificationModel notificationModel = NotificationModel.builder()
+                .recipientUserId(recipientUserId)
+                .recipientRole(recipientRole)
+                .title(title)
+                .message(message)
+                .assignmentId(assignmentId)
+                .assignmentTitle(assignmentTitle)
+                .assignmentStatus(assignmentStatus)
+                .writerWorkStatus(writerWorkStatus)
+                .createdAt(System.currentTimeMillis())
+                .read(false)
+                .build();
+
+        notificationRepository.createNotification(notificationModel, new NotificationRepository.OnNotificationActionCallback() {
+            @Override
+            public void onSuccess() {
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+            }
+        });
+    }
+
+    private String getAssignmentTitleText() {
+        return tvTitle != null && tvTitle.getText() != null && !tvTitle.getText().toString().trim().isEmpty()
+                ? tvTitle.getText().toString().trim()
+                : "this assignment";
+    }
+
+    private String getStudentNameText() {
+        return tvStudent != null && tvStudent.getText() != null && !tvStudent.getText().toString().trim().isEmpty()
+                ? tvStudent.getText().toString().trim()
+                : "the student";
     }
 }

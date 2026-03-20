@@ -35,7 +35,9 @@ import lk.disontech.campusassist.fragment.fragment.student.AssignmentDetailsFrag
 import lk.disontech.campusassist.model.AcceptedWorkModel;
 import lk.disontech.campusassist.model.AssignmentModel;
 import lk.disontech.campusassist.model.BidModel;
+import lk.disontech.campusassist.model.NotificationModel;
 import lk.disontech.campusassist.repository.BidRepository;
+import lk.disontech.campusassist.repository.NotificationRepository;
 
 public class MyAcceptedWorkFragment extends Fragment {
 
@@ -48,6 +50,7 @@ public class MyAcceptedWorkFragment extends Fragment {
     private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firebaseFirestore;
     private BidRepository bidRepository;
+    private NotificationRepository notificationRepository;
     private String selectedStatusFilter = "All";
     private ArrayAdapter<String> statusFilterAdapter;
     private final List<String> statusFilterOptions = new ArrayList<>();
@@ -72,6 +75,7 @@ public class MyAcceptedWorkFragment extends Fragment {
         firebaseAuth = FirebaseAuth.getInstance();
         firebaseFirestore = FirebaseFirestore.getInstance();
         bidRepository = new BidRepository();
+        notificationRepository = new NotificationRepository();
 
         toolbar.setNavigationOnClickListener(v ->
                 requireActivity().onBackPressed()
@@ -306,15 +310,16 @@ public class MyAcceptedWorkFragment extends Fragment {
         new AlertDialog.Builder(requireContext())
                 .setTitle("Cancel Bid")
                 .setMessage("Cancel this bid request?")
-                .setPositiveButton("Yes", (dialog, which) -> cancelBid(model.getBidId()))
+                .setPositiveButton("Yes", (dialog, which) -> cancelBid(model))
                 .setNegativeButton("No", (dialog, which) -> dialog.dismiss())
                 .show();
     }
 
-    private void cancelBid(String bidId) {
-        bidRepository.cancelBid(bidId, new BidRepository.OnBidActionCallback() {
+    private void cancelBid(AcceptedWorkModel model) {
+        bidRepository.cancelBid(model.getBidId(), new BidRepository.OnBidActionCallback() {
             @Override
             public void onSuccess() {
+                notifyStudentBidCancelled(model);
                 Toast.makeText(getContext(), "Bid cancelled", Toast.LENGTH_SHORT).show();
                 loadMyWork();
             }
@@ -324,6 +329,47 @@ public class MyAcceptedWorkFragment extends Fragment {
                 Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void notifyStudentBidCancelled(AcceptedWorkModel model) {
+        if (firebaseAuth.getCurrentUser() == null || model == null || TextUtils.isEmpty(model.getStudentId())) {
+            return;
+        }
+
+        String writerId = firebaseAuth.getCurrentUser().getUid();
+        firebaseFirestore.collection("Users").document(writerId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    String firstName = documentSnapshot.getString("firstName") != null ? documentSnapshot.getString("firstName").trim() : "";
+                    String lastName = documentSnapshot.getString("lastName") != null ? documentSnapshot.getString("lastName").trim() : "";
+                    String writerName = (firstName + " " + lastName).trim();
+                    if (writerName.isEmpty()) {
+                        String email = documentSnapshot.getString("email");
+                        writerName = email != null && !email.trim().isEmpty() ? email.trim() : "A writer";
+                    }
+
+                    NotificationModel notificationModel = NotificationModel.builder()
+                            .recipientUserId(model.getStudentId())
+                            .recipientRole("student")
+                            .title("Bid Cancelled")
+                            .message(writerName + " cancelled the bid for your assignment " + safe(model.getTitle()) + ".")
+                            .assignmentId(model.getAssignmentId())
+                            .assignmentTitle(model.getTitle())
+                            .assignmentStatus(model.getAssignmentStatus())
+                            .writerWorkStatus("")
+                            .createdAt(System.currentTimeMillis())
+                            .read(false)
+                            .build();
+
+                    notificationRepository.createNotification(notificationModel, new NotificationRepository.OnNotificationActionCallback() {
+                        @Override
+                        public void onSuccess() {
+                        }
+
+                        @Override
+                        public void onError(String errorMessage) {
+                        }
+                    });
+                });
     }
 
     private String mapWriterStatus(BidModel bid, AssignmentModel assignment) {

@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:gravity="center_vertical">
+        android:gravity="top">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/imgIcon"
@@ -53,6 +53,16 @@
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
             <TextView
+                android:id="@+id/tvAssignmentInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Assignment: Research Paper"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface" />
+
+            <TextView
                 android:id="@+id/tvTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -61,7 +71,28 @@
                 android:textSize="12sp"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnViewAssignment"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginTop="10dp"
+                android:text="View Assignment"
+                android:textAllCaps="false"
+                android:textColor="?attr/colorPrimary"
+                app:cornerRadius="20dp"
+                app:strokeColor="?attr/colorOutline"
+                app:strokeWidth="1dp"
+                style="?attr/materialButtonOutlinedStyle" />
+
         </LinearLayout>
+
+        <View
+            android:id="@+id/viewUnreadDot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="4dp"
+            android:background="@android:color/holo_red_dark" />
 
     </LinearLayout>
 
