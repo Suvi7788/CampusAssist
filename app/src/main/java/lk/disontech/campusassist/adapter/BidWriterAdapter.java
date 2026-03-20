@@ -18,15 +18,19 @@ import lk.disontech.campusassist.model.BidModel;
 
 public class BidWriterAdapter extends RecyclerView.Adapter<BidWriterAdapter.BidViewHolder> {
 
-    public interface OnCallWriterClickListener {
-        void onCallWriter(BidModel bidModel);
+    public interface BidActionListener {
+        void onViewProfile(BidModel bidModel);
+
+        void onAcceptBid(BidModel bidModel);
+
+        void onRejectBid(BidModel bidModel);
     }
 
     private final List<BidModel> bidList = new ArrayList<>();
-    private final OnCallWriterClickListener onCallWriterClickListener;
+    private final BidActionListener bidActionListener;
 
-    public BidWriterAdapter(OnCallWriterClickListener onCallWriterClickListener) {
-        this.onCallWriterClickListener = onCallWriterClickListener;
+    public BidWriterAdapter(BidActionListener bidActionListener) {
+        this.bidActionListener = bidActionListener;
     }
 
     public void submitList(List<BidModel> newList) {
@@ -48,12 +52,32 @@ public class BidWriterAdapter extends RecyclerView.Adapter<BidWriterAdapter.BidV
     public void onBindViewHolder(@NonNull BidViewHolder holder, int position) {
         BidModel bid = bidList.get(position);
         holder.tvWriterName.setText(bid.getWriterName());
-        holder.tvWriterEmail.setText(bid.getWriterEmail());
-        holder.tvWriterMobile.setText(bid.getWriterMobile());
+        holder.tvCompletedProjects.setText(String.valueOf(bid.getCompletedProjectsCount()));
+        holder.tvWriterRating.setText(formatRating(bid.getRating()));
+        holder.tvBidStatus.setText(getStatusLabel(bid.getStatus()));
 
-        holder.btnCallWriter.setOnClickListener(v -> {
-            if (onCallWriterClickListener != null) {
-                onCallWriterClickListener.onCallWriter(bid);
+        boolean isPending = bid.getStatus() == null || bid.getStatus().trim().isEmpty()
+                || "Pending".equalsIgnoreCase(bid.getStatus());
+
+        holder.layoutBidActions.setVisibility(View.VISIBLE);
+        holder.btnAcceptBid.setVisibility(isPending ? View.VISIBLE : View.GONE);
+        holder.btnRejectBid.setVisibility(isPending ? View.VISIBLE : View.GONE);
+
+        holder.btnViewProfile.setOnClickListener(v -> {
+            if (bidActionListener != null) {
+                bidActionListener.onViewProfile(bid);
+            }
+        });
+
+        holder.btnAcceptBid.setOnClickListener(v -> {
+            if (bidActionListener != null) {
+                bidActionListener.onAcceptBid(bid);
+            }
+        });
+
+        holder.btnRejectBid.setOnClickListener(v -> {
+            if (bidActionListener != null) {
+                bidActionListener.onRejectBid(bid);
             }
         });
     }
@@ -66,17 +90,39 @@ public class BidWriterAdapter extends RecyclerView.Adapter<BidWriterAdapter.BidV
     static class BidViewHolder extends RecyclerView.ViewHolder {
 
         private final TextView tvWriterName;
-        private final TextView tvWriterEmail;
-        private final TextView tvWriterMobile;
-        private final MaterialButton btnCallWriter;
+        private final TextView tvCompletedProjects;
+        private final TextView tvWriterRating;
+        private final TextView tvBidStatus;
+        private final View layoutBidActions;
+        private final MaterialButton btnViewProfile;
+        private final MaterialButton btnAcceptBid;
+        private final MaterialButton btnRejectBid;
 
         public BidViewHolder(@NonNull View itemView) {
             super(itemView);
             tvWriterName = itemView.findViewById(R.id.tvWriterName);
-            tvWriterEmail = itemView.findViewById(R.id.tvWriterEmail);
-            tvWriterMobile = itemView.findViewById(R.id.tvWriterMobile);
-            btnCallWriter = itemView.findViewById(R.id.btnCallWriter);
+            tvCompletedProjects = itemView.findViewById(R.id.tvCompletedProjects);
+            tvWriterRating = itemView.findViewById(R.id.tvWriterRating);
+            tvBidStatus = itemView.findViewById(R.id.tvBidStatus);
+            layoutBidActions = itemView.findViewById(R.id.layoutBidActions);
+            btnViewProfile = itemView.findViewById(R.id.btnViewProfile);
+            btnAcceptBid = itemView.findViewById(R.id.btnAcceptBid);
+            btnRejectBid = itemView.findViewById(R.id.btnRejectBid);
         }
+    }
+
+    private String formatRating(Double rating) {
+        if (rating == null || rating <= 0) {
+            return "N/A";
+        }
+        return String.format(java.util.Locale.US, "%.1f", rating);
+    }
+
+    private String getStatusLabel(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return "Pending";
+        }
+        return status;
     }
 }
 

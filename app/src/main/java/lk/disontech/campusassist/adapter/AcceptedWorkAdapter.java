@@ -19,17 +19,19 @@ import lk.disontech.campusassist.model.AcceptedWorkModel;
 
 public class AcceptedWorkAdapter extends RecyclerView.Adapter<AcceptedWorkAdapter.AcceptedWorkViewHolder> {
 
-    public interface OnViewUpdateClickListener {
+    public interface MyWorkActionListener {
         void onViewUpdateClick(AcceptedWorkModel model);
+
+        void onCancelBidClick(AcceptedWorkModel model);
     }
 
     private final Context context;
     private final List<AcceptedWorkModel> acceptedWorkList;
-    private final OnViewUpdateClickListener listener;
+    private final MyWorkActionListener listener;
 
     public AcceptedWorkAdapter(Context context,
                                List<AcceptedWorkModel> acceptedWorkList,
-                               OnViewUpdateClickListener listener) {
+                               MyWorkActionListener listener) {
         this.context = context;
         this.acceptedWorkList = acceptedWorkList;
         this.listener = listener;
@@ -54,16 +56,34 @@ public class AcceptedWorkAdapter extends RecyclerView.Adapter<AcceptedWorkAdapte
 
         if ("In Progress".equalsIgnoreCase(model.getStatus())) {
             holder.tvStatus.setBackgroundResource(R.drawable.bg_status_orange);
-        } else if ("Under Review".equalsIgnoreCase(model.getStatus())) {
+        } else if ("Approved".equalsIgnoreCase(model.getStatus())
+                || "Completed".equalsIgnoreCase(model.getStatus())
+                || "Pending Payment".equalsIgnoreCase(model.getStatus())) {
             holder.tvStatus.setBackgroundResource(R.drawable.bg_status_blue);
+        } else if ("Bid Canceled".equalsIgnoreCase(model.getStatus())) {
+            holder.tvStatus.setBackgroundResource(R.drawable.bg_chip_unselected);
+            holder.tvStatus.setTextColor(Color.DKGRAY);
+        } else if ("Rejected".equalsIgnoreCase(model.getStatus())) {
+            holder.tvStatus.setBackgroundResource(R.drawable.bg_chip_unselected);
+            holder.tvStatus.setTextColor(Color.RED);
         } else {
             holder.tvStatus.setBackgroundResource(R.drawable.bg_chip_unselected);
             holder.tvStatus.setTextColor(Color.BLACK);
         }
 
+        holder.btnCancelBid.setVisibility(model.canCancelBid() ? View.VISIBLE : View.GONE);
+        holder.btnViewUpdate.setEnabled(model.canOpenDetails());
+        holder.btnViewUpdate.setAlpha(model.canOpenDetails() ? 1f : 0.5f);
+
         holder.btnViewUpdate.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onViewUpdateClick(model);
+            }
+        });
+
+        holder.btnCancelBid.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onCancelBidClick(model);
             }
         });
     }
@@ -76,7 +96,7 @@ public class AcceptedWorkAdapter extends RecyclerView.Adapter<AcceptedWorkAdapte
     static class AcceptedWorkViewHolder extends RecyclerView.ViewHolder {
 
         TextView tvTitle, tvStatus, tvSubject, tvStudent, tvDueDate;
-        MaterialButton btnViewUpdate;
+        MaterialButton btnViewUpdate, btnCancelBid;
 
         public AcceptedWorkViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -87,6 +107,7 @@ public class AcceptedWorkAdapter extends RecyclerView.Adapter<AcceptedWorkAdapte
             tvStudent = itemView.findViewById(R.id.tvStudent);
             tvDueDate = itemView.findViewById(R.id.tvDueDate);
             btnViewUpdate = itemView.findViewById(R.id.btnViewUpdate);
+            btnCancelBid = itemView.findViewById(R.id.btnCancelBid);
         }
     }
 }

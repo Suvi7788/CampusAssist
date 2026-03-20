@@ -2,7 +2,9 @@ package lk.disontech.campusassist.repository;
 
 import androidx.annotation.NonNull;
 
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,9 +51,98 @@ public class BidRepository {
                 .whereEqualTo("assignmentId", assignmentId)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
-                    List<BidModel> bidList = new ArrayList<>(querySnapshot.toObjects(BidModel.class));
+                    List<BidModel> bidList = new ArrayList<>();
+                    for (DocumentSnapshot documentSnapshot : querySnapshot.getDocuments()) {
+                        BidModel bidModel = documentSnapshot.toObject(BidModel.class);
+                        if (bidModel != null) {
+                            if (bidModel.getBidId() == null || bidModel.getBidId().trim().isEmpty()) {
+                                bidModel.setBidId(documentSnapshot.getId());
+                            }
+                            bidList.add(bidModel);
+                        }
+                    }
                     Collections.sort(bidList, Comparator.comparingLong(BidModel::getCreatedAt).reversed());
                     callback.onBidsLoaded(bidList);
+                })
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
+
+    public void getBidsByWriter(@NonNull String writerId, @NonNull OnBidsLoadedCallback callback) {
+        firestore.collection("Bids")
+                .whereEqualTo("writerId", writerId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<BidModel> bidList = new ArrayList<>();
+                    for (DocumentSnapshot documentSnapshot : querySnapshot.getDocuments()) {
+                        BidModel bidModel = documentSnapshot.toObject(BidModel.class);
+                        if (bidModel != null) {
+                            if (bidModel.getBidId() == null || bidModel.getBidId().trim().isEmpty()) {
+                                bidModel.setBidId(documentSnapshot.getId());
+                            }
+                            bidList.add(bidModel);
+                        }
+                    }
+                    Collections.sort(bidList, Comparator.comparingLong(BidModel::getCreatedAt).reversed());
+                    callback.onBidsLoaded(bidList);
+                })
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
+
+    public void updateBidStatus(@NonNull String bidId, @NonNull String status,
+                                @NonNull OnBidActionCallback callback) {
+        firestore.collection("Bids").document(bidId)
+                .update("status", status)
+                .addOnSuccessListener(unused -> callback.onSuccess())
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
+
+    public void cancelBid(@NonNull String bidId, @NonNull OnBidActionCallback callback) {
+        updateBidStatus(bidId, "Cancelled", callback);
+    }
+
+    public void acceptBid(@NonNull String assignmentId,
+                          @NonNull String acceptedBidId,
+                          @NonNull String writerId,
+                          @NonNull String writerName,
+                          @NonNull OnBidActionCallback callback) {
+        firestore.collection("Bids")
+                .whereEqualTo("assignmentId", assignmentId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (writerId.trim().isEmpty()) {
+                        callback.onError("Invalid writer selected for assignment");
+                        return;
+                    }
+
+                    WriteBatch batch = firestore.batch();
+
+                    try {
+                        batch.update(
+                                firestore.collection("Assignments").document(assignmentId),
+                                "status", "Assigned",
+                                "assignedWriterId", writerId,
+                                "assignedWriterName", writerName == null ? "Writer" : writerName,
+                                "updatedAt", System.currentTimeMillis()
+                        );
+                    } catch (Exception e) {
+                        callback.onError(e.getMessage());
+                        return;
+                    }
+
+                    querySnapshot.getDocuments().forEach(documentSnapshot -> {
+                        String bidId = documentSnapshot.getId();
+                        String currentStatus = documentSnapshot.getString("status");
+
+                        if (acceptedBidId.equals(bidId)) {
+                            batch.update(documentSnapshot.getReference(), "status", "Accepted");
+                        } else if (currentStatus == null || currentStatus.equalsIgnoreCase("Pending")) {
+                            batch.update(documentSnapshot.getReference(), "status", "Rejected");
+                        }
+                    });
+
+                    batch.commit()
+                            .addOnSuccessListener(unused -> callback.onSuccess())
+                            .addOnFailureListener(e -> callback.onError(e.getMessage()));
                 })
                 .addOnFailureListener(e -> callback.onError(e.getMessage()));
     }

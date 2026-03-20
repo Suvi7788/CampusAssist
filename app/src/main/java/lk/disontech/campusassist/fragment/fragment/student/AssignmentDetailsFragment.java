@@ -20,7 +20,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -37,7 +36,9 @@ import com.google.firebase.auth.FirebaseAuth;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 import lk.disontech.campusassist.R;
@@ -57,10 +58,13 @@ public class AssignmentDetailsFragment extends Fragment {
     private LinearLayout detailsViewLayout, editModeLayout;
     private LinearLayout attachmentEditRow;
     private MaterialCardView studentBidsSection;
+    private MaterialCardView writerWorkSection;
     private RecyclerView recyclerBids;
-    private TextView tvNoBids;
+    private TextView tvNoBids, tvWriterWorkStatus, tvSubmissionFileName;
     private MaterialButton btnEdit, btnDelete, btnSave, btnCancel;
-    private MaterialButton btnBidForAssignment;
+    private MaterialButton btnBidForAssignment, btnStartWork, btnPickSubmissionFile, btnSubmitCompletedWork;
+    private TextInputEditText etSubmissionNotes;
+    private LinearLayout completeWorkSection;
     private FirebaseFirestore firebaseFirestore;
     private FirebaseStorage firebaseStorage;
     private StorageReference storageReference;
@@ -72,11 +76,17 @@ public class AssignmentDetailsFragment extends Fragment {
     private String assignmentId = "";
     private String studentId = "";
     private String currentFileName = "";
+    private String assignmentStatus = "";
+    private String writerBidStatus = "";
+    private String writerWorkStatus = "";
     private String newFileUrl = "";
     private String newFileName = "";
     private Uri selectedFileUri = null;
+    private Uri submissionFileUri = null;
+    private String submissionFileName = "";
     private boolean isEditMode = false;
     private boolean isWriterView = false;
+    private boolean fromMyWork = false;
     private ProgressDialog progressDialog;
 
     private final ActivityResultLauncher<String> filePickerLauncher =
@@ -85,6 +95,16 @@ public class AssignmentDetailsFragment extends Fragment {
                     selectedFileUri = uri;
                     newFileName = getFileName(uri);
                     etAttachmentName.setText("Selected: " + newFileName);
+                }
+            });
+
+    private final ActivityResultLauncher<String> submissionFilePickerLauncher =
+            registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+                if (uri != null) {
+                    submissionFileUri = uri;
+                    submissionFileName = getFileName(uri);
+                    tvSubmissionFileName.setText(submissionFileName == null || submissionFileName.isEmpty()
+                            ? "No file selected" : submissionFileName);
                 }
             });
 
@@ -138,10 +158,33 @@ public class AssignmentDetailsFragment extends Fragment {
         btnCancel = view.findViewById(R.id.btnCancel);
         btnBidForAssignment = view.findViewById(R.id.btnBidForAssignment);
         studentBidsSection = view.findViewById(R.id.studentBidsSection);
+        writerWorkSection = view.findViewById(R.id.writerWorkSection);
         recyclerBids = view.findViewById(R.id.recyclerBids);
         tvNoBids = view.findViewById(R.id.tvNoBids);
+        tvWriterWorkStatus = view.findViewById(R.id.tvWriterWorkStatus);
+        tvSubmissionFileName = view.findViewById(R.id.tvSubmissionFileName);
+        btnStartWork = view.findViewById(R.id.btnStartWork);
+        btnPickSubmissionFile = view.findViewById(R.id.btnPickSubmissionFile);
+        btnSubmitCompletedWork = view.findViewById(R.id.btnSubmitCompletedWork);
+        etSubmissionNotes = view.findViewById(R.id.etSubmissionNotes);
+        completeWorkSection = view.findViewById(R.id.completeWorkSection);
 
-        bidWriterAdapter = new BidWriterAdapter(this::openDialerForWriter);
+        bidWriterAdapter = new BidWriterAdapter(new BidWriterAdapter.BidActionListener() {
+            @Override
+            public void onViewProfile(BidModel bidModel) {
+                openWriterProfile(bidModel);
+            }
+
+            @Override
+            public void onAcceptBid(BidModel bidModel) {
+                confirmAcceptBid(bidModel);
+            }
+
+            @Override
+            public void onRejectBid(BidModel bidModel) {
+                confirmRejectBid(bidModel);
+            }
+        });
         recyclerBids.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerBids.setAdapter(bidWriterAdapter);
         recyclerBids.setNestedScrollingEnabled(false);
@@ -155,6 +198,10 @@ public class AssignmentDetailsFragment extends Fragment {
             isWriterView = args.getBoolean("isWriterView", false);
             String title = args.getString("title", "");
             String subject = args.getString("subject", "");
+            assignmentStatus = args.getString("status", "");
+            writerBidStatus = args.getString("writerBidStatus", "");
+            writerWorkStatus = args.getString("writerWorkStatus", "");
+            fromMyWork = args.getBoolean("fromMyWork", false);
             String deadline = args.getString("deadline", "");
             String description = args.getString("description", "");
             String studentName = args.getString("studentName", args.getString("student", ""));
@@ -229,6 +276,9 @@ public class AssignmentDetailsFragment extends Fragment {
 
         // Handle writer bid action
         btnBidForAssignment.setOnClickListener(v -> placeBidForAssignment());
+        btnStartWork.setOnClickListener(v -> startWork());
+        btnPickSubmissionFile.setOnClickListener(v -> submissionFilePickerLauncher.launch("*/*"));
+        btnSubmitCompletedWork.setOnClickListener(v -> submitCompletedWork());
 
         return view;
     }
@@ -243,16 +293,149 @@ public class AssignmentDetailsFragment extends Fragment {
             btnDelete.setVisibility(View.GONE);
             studentBidsSection.setVisibility(View.GONE);
 
-            if (assignmentId != null && !assignmentId.isEmpty()) {
-                btnBidForAssignment.setVisibility(View.VISIBLE);
-            } else {
+            if (fromMyWork) {
                 btnBidForAssignment.setVisibility(View.GONE);
+                writerWorkSection.setVisibility(View.VISIBLE);
+                setupWriterWorkSection();
+            } else {
+                writerWorkSection.setVisibility(View.GONE);
+                if (assignmentId != null && !assignmentId.isEmpty()) {
+                    btnBidForAssignment.setVisibility(View.VISIBLE);
+                } else {
+                    btnBidForAssignment.setVisibility(View.GONE);
+                }
             }
         } else {
             btnBidForAssignment.setVisibility(View.GONE);
+            writerWorkSection.setVisibility(View.GONE);
             studentBidsSection.setVisibility(View.VISIBLE);
             loadBidsForAssignment();
         }
+    }
+
+    private void setupWriterWorkSection() {
+        String statusToUse = !TextUtils.isEmpty(writerWorkStatus) ? writerWorkStatus : mapWriterStatusFromCurrentData();
+
+        tvWriterWorkStatus.setText("Status: " + statusToUse);
+        btnStartWork.setVisibility("Approved".equalsIgnoreCase(statusToUse) ? View.VISIBLE : View.GONE);
+
+        if ("In Progress".equalsIgnoreCase(statusToUse)) {
+            completeWorkSection.setVisibility(View.VISIBLE);
+        } else {
+            completeWorkSection.setVisibility(View.GONE);
+            submissionFileUri = null;
+            submissionFileName = "";
+            tvSubmissionFileName.setText("No file selected");
+            etSubmissionNotes.setText("");
+        }
+    }
+
+    private String mapWriterStatusFromCurrentData() {
+        if (writerBidStatus != null && (writerBidStatus.equalsIgnoreCase("Rejected")
+                || writerBidStatus.equalsIgnoreCase("Cancelled"))) {
+            return "Rejected";
+        }
+        if (writerBidStatus == null || writerBidStatus.isEmpty() || writerBidStatus.equalsIgnoreCase("Pending")) {
+            return "Pending Confirmation";
+        }
+        if (assignmentStatus.equalsIgnoreCase("Assigned")) {
+            return "Approved";
+        }
+        if (assignmentStatus.equalsIgnoreCase("In Progress")) {
+            return "In Progress";
+        }
+        if (assignmentStatus.equalsIgnoreCase("Completed")) {
+            return "Completed";
+        }
+        if (assignmentStatus.equalsIgnoreCase("Pending Payment")) {
+            return "Pending Payment";
+        }
+        return "Approved";
+    }
+
+    private void startWork() {
+        if (TextUtils.isEmpty(assignmentId)) {
+            Toast.makeText(getContext(), "Invalid assignment", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressDialog.setTitle("Starting Work");
+        progressDialog.setMessage("Please wait...");
+        progressDialog.show();
+
+        firebaseFirestore.collection("Assignments").document(assignmentId)
+                .update("status", "In Progress", "updatedAt", System.currentTimeMillis())
+                .addOnSuccessListener(unused -> {
+                    progressDialog.dismiss();
+                    assignmentStatus = "In Progress";
+                    writerWorkStatus = "In Progress";
+                    setupWriterWorkSection();
+                    Toast.makeText(getContext(), "Work started", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(getContext(), "Failed to start work: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void submitCompletedWork() {
+        if (TextUtils.isEmpty(assignmentId)) {
+            Toast.makeText(getContext(), "Invalid assignment", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (submissionFileUri == null) {
+            Toast.makeText(getContext(), "Please choose a file", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String notes = etSubmissionNotes.getText() == null ? "" : etSubmissionNotes.getText().toString().trim();
+
+        progressDialog.setTitle("Submitting Work");
+        progressDialog.setMessage("Uploading file...");
+        progressDialog.show();
+
+        String extension = getFileExtension(submissionFileUri);
+        String storedName = "Submission_" + UUID.randomUUID() + extension;
+        StorageReference submissionRef = firebaseStorage.getReference()
+                .child("submissions")
+                .child(assignmentId)
+                .child(storedName);
+
+        submissionRef.putFile(submissionFileUri)
+                .addOnSuccessListener(taskSnapshot -> submissionRef.getDownloadUrl()
+                        .addOnSuccessListener(uri -> {
+                            Map<String, Object> updates = new HashMap<>();
+                            updates.put("status", "Pending Payment");
+                            updates.put("submissionFileUrl", uri.toString());
+                            updates.put("submissionFileName", submissionFileName);
+                            updates.put("submissionNotes", notes);
+                            updates.put("submissionWriterId", firebaseAuth.getCurrentUser() != null
+                                    ? firebaseAuth.getCurrentUser().getUid() : "");
+                            updates.put("submissionAt", System.currentTimeMillis());
+                            updates.put("updatedAt", System.currentTimeMillis());
+
+                            firebaseFirestore.collection("Assignments").document(assignmentId)
+                                    .update(updates)
+                                    .addOnSuccessListener(unused -> {
+                                        progressDialog.dismiss();
+                                        assignmentStatus = "Pending Payment";
+                                        writerWorkStatus = "Pending Payment";
+                                        setupWriterWorkSection();
+                                        Toast.makeText(getContext(), "Work submitted", Toast.LENGTH_SHORT).show();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        progressDialog.dismiss();
+                                        Toast.makeText(getContext(), "Failed to save submission: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    });
+                        })
+                        .addOnFailureListener(e -> {
+                            progressDialog.dismiss();
+                            Toast.makeText(getContext(), "Failed to get file url: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }))
+                .addOnFailureListener(e -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(getContext(), "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void placeBidForAssignment() {
@@ -320,6 +503,7 @@ public class AssignmentDetailsFragment extends Fragment {
     private void loadBidsForAssignment() {
         if (assignmentId == null || assignmentId.isEmpty()) {
             tvNoBids.setVisibility(View.VISIBLE);
+            recyclerBids.setVisibility(View.GONE);
             tvNoBids.setText("No bids available for this assignment");
             return;
         }
@@ -333,9 +517,7 @@ public class AssignmentDetailsFragment extends Fragment {
                     return;
                 }
 
-                tvNoBids.setVisibility(View.GONE);
-                recyclerBids.setVisibility(View.VISIBLE);
-                bidWriterAdapter.submitList(bids);
+                enrichBidsForStudentView(bids);
             }
 
             @Override
@@ -347,16 +529,180 @@ public class AssignmentDetailsFragment extends Fragment {
         });
     }
 
-    private void openDialerForWriter(BidModel bidModel) {
-        String mobile = bidModel != null ? bidModel.getWriterMobile() : "";
-        if (mobile == null || mobile.trim().isEmpty()) {
-            Toast.makeText(getContext(), "Writer mobile number not available", Toast.LENGTH_SHORT).show();
+    private void enrichBidsForStudentView(java.util.List<BidModel> bids) {
+        if (bids == null || bids.isEmpty()) {
+            tvNoBids.setVisibility(View.VISIBLE);
+            recyclerBids.setVisibility(View.GONE);
             return;
         }
 
-        Intent intent = new Intent(Intent.ACTION_DIAL);
-        intent.setData(Uri.parse("tel:" + mobile.trim()));
-        startActivity(intent);
+        final int[] remaining = {bids.size()};
+        for (BidModel bid : bids) {
+            populateBidMetadata(bid, () -> {
+                remaining[0]--;
+                if (remaining[0] <= 0) {
+                    tvNoBids.setVisibility(View.GONE);
+                    recyclerBids.setVisibility(View.VISIBLE);
+                    bidWriterAdapter.submitList(bids);
+                }
+            });
+        }
+    }
+
+    private void populateBidMetadata(BidModel bid, Runnable onComplete) {
+        if (bid == null || bid.getWriterId() == null || bid.getWriterId().trim().isEmpty()) {
+            onComplete.run();
+            return;
+        }
+
+        final int[] pendingTasks = {2};
+        Runnable finishTask = () -> {
+            pendingTasks[0]--;
+            if (pendingTasks[0] <= 0) {
+                onComplete.run();
+            }
+        };
+
+        firebaseFirestore.collection("Users").document(bid.getWriterId()).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    Double rating = documentSnapshot.getDouble("rating");
+                    if (rating != null) {
+                        bid.setRating(rating);
+                    }
+
+                    String firstName = documentSnapshot.getString("firstName");
+                    String lastName = documentSnapshot.getString("lastName");
+                    String fullName = ((firstName != null ? firstName.trim() : "") + " "
+                            + (lastName != null ? lastName.trim() : "")).trim();
+                    if (!fullName.isEmpty()) {
+                        bid.setWriterName(fullName);
+                    }
+                    finishTask.run();
+                })
+                .addOnFailureListener(e -> finishTask.run());
+
+        firebaseFirestore.collection("Assignments")
+                .whereEqualTo("assignedWriterId", bid.getWriterId())
+                .whereEqualTo("status", "Completed")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    bid.setCompletedProjectsCount(queryDocumentSnapshots.size());
+                    finishTask.run();
+                })
+                .addOnFailureListener(e -> finishTask.run());
+    }
+
+    private void openWriterProfile(BidModel bidModel) {
+        if (bidModel == null || bidModel.getWriterId() == null || bidModel.getWriterId().trim().isEmpty()) {
+            Toast.makeText(getContext(), "Writer profile not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Bundle bundle = new Bundle();
+        bundle.putString("writerId", bidModel.getWriterId());
+
+        WriterProfileFragment fragment = new WriterProfileFragment();
+        fragment.setArguments(bundle);
+
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.dashboardContainer, fragment)
+                .addToBackStack(null)
+                .commit();
+    }
+
+    private void confirmAcceptBid(BidModel bidModel) {
+        if (bidModel == null) {
+            return;
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Accept Bid")
+                .setMessage("Accept this writer for the assignment? Other pending bids will be rejected.")
+                .setPositiveButton("Accept", (dialog, which) -> acceptBid(bidModel))
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
+    private void acceptBid(BidModel bidModel) {
+        if (assignmentId == null || assignmentId.trim().isEmpty()) {
+            Toast.makeText(getContext(), "Invalid assignment", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (bidModel.getBidId() == null || bidModel.getBidId().trim().isEmpty()) {
+            Toast.makeText(getContext(), "Invalid bid", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (bidModel.getWriterId() == null || bidModel.getWriterId().trim().isEmpty()) {
+            Toast.makeText(getContext(), "Invalid writer", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressDialog.setTitle("Accepting Bid");
+        progressDialog.setMessage("Please wait...");
+        progressDialog.show();
+
+        bidRepository.acceptBid(
+                assignmentId,
+                bidModel.getBidId(),
+                bidModel.getWriterId().trim(),
+                bidModel.getWriterName() != null ? bidModel.getWriterName() : "Writer",
+                new BidRepository.OnBidActionCallback() {
+                    @Override
+                    public void onSuccess() {
+                        progressDialog.dismiss();
+                        Toast.makeText(getContext(), "Bid accepted successfully", Toast.LENGTH_SHORT).show();
+                        loadBidsForAssignment();
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        progressDialog.dismiss();
+                        Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+    }
+
+    private void confirmRejectBid(BidModel bidModel) {
+        if (bidModel == null) {
+            return;
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Reject Bid")
+                .setMessage("Reject this writer's bid?")
+                .setPositiveButton("Reject", (dialog, which) -> rejectBid(bidModel))
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
+    private void rejectBid(BidModel bidModel) {
+        if (bidModel.getBidId() == null || bidModel.getBidId().trim().isEmpty()) {
+            Toast.makeText(getContext(), "Invalid bid", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressDialog.setTitle("Rejecting Bid");
+        progressDialog.setMessage("Please wait...");
+        progressDialog.show();
+
+        bidRepository.updateBidStatus(bidModel.getBidId(), "Rejected", new BidRepository.OnBidActionCallback() {
+            @Override
+            public void onSuccess() {
+                progressDialog.dismiss();
+                Toast.makeText(getContext(), "Bid rejected", Toast.LENGTH_SHORT).show();
+                loadBidsForAssignment();
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                progressDialog.dismiss();
+                Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void setupSubjectDropdown() {

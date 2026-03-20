@@ -19,5 +19,7 @@ public class BidModel {
     private String writerMobile;
     private long createdAt;
     private String status; // "Pending", "Accepted", "Rejected"
+    private long completedProjectsCount;
+    private Double rating;
 }
 

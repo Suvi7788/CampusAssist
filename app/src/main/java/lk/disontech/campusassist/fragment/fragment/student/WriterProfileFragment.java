@@ -1,5 +1,6 @@
 package lk.disontech.campusassist.fragment.fragment.student;
 
+import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
@@ -37,7 +38,7 @@ public class WriterProfileFragment extends Fragment {
     private TextView tvPhone, tvEmail;
     private com.google.android.material.imageview.ShapeableImageView imgAvatar;
     private View editProfileSection;
-    private MaterialButton btnEditProfile, btnChangeProfileImage, btnSaveProfile, btnCancelEdit;
+    private MaterialButton btnEditProfile, btnChangeProfileImage, btnSaveProfile, btnCancelEdit, btnCallWriter;
     private TextInputEditText etFirstName, etLastName, etMobile, etEmail, etBio, etInterests;
     private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firebaseFirestore;
@@ -46,6 +47,7 @@ public class WriterProfileFragment extends Fragment {
     private String activeWriterId = "";
     private String currentProfilePicUrl = "";
     private String avatarLoadToken = "";
+    private String loadedMobile = "";
 
     private final ActivityResultLauncher<String> imagePickerLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -89,6 +91,7 @@ public class WriterProfileFragment extends Fragment {
         btnChangeProfileImage = view.findViewById(R.id.btnChangeProfileImage);
         btnSaveProfile = view.findViewById(R.id.btnSaveProfile);
         btnCancelEdit = view.findViewById(R.id.btnCancelEdit);
+        btnCallWriter = view.findViewById(R.id.btnCallWriter);
         editProfileSection = view.findViewById(R.id.editProfileSection);
 
         etFirstName = view.findViewById(R.id.etFirstName);
@@ -135,6 +138,7 @@ public class WriterProfileFragment extends Fragment {
 
         btnChangeProfileImage.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
         btnSaveProfile.setOnClickListener(v -> saveProfile());
+        btnCallWriter.setOnClickListener(v -> callWriter());
     }
 
     private void loadWriterData() {
@@ -159,6 +163,7 @@ public class WriterProfileFragment extends Fragment {
                 && writerId.equals(firebaseAuth.getCurrentUser().getUid());
         btnEditProfile.setVisibility(canEdit ? View.VISIBLE : View.GONE);
         btnChangeProfileImage.setVisibility(canEdit ? View.VISIBLE : View.GONE);
+        btnCallWriter.setVisibility(canEdit ? View.GONE : View.VISIBLE);
         editProfileSection.setVisibility(View.GONE);
 
         String finalWriterId = writerId;
@@ -188,6 +193,7 @@ public class WriterProfileFragment extends Fragment {
                     String email = safe(writer.getEmail());
                     String mobile = safe(writer.getMobile());
                     currentProfilePicUrl = safe(writer.getProfilePicURL());
+                    loadedMobile = mobile;
 
                     tvName.setText(fullName);
                     tvInitials.setText(getInitials(firstName, lastName, fullName));
@@ -212,10 +218,30 @@ public class WriterProfileFragment extends Fragment {
                     tvCompleted.setText("0");
                     tvStatRating.setText("N/A");
                     tvTopPercent.setText(userType.isEmpty() ? "Writer" : userType);
+
+                    loadWriterStatistics(finalWriterId, documentSnapshot);
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(getContext(), "Error loading profile: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                 );
+    }
+
+    private void loadWriterStatistics(String writerId, com.google.firebase.firestore.DocumentSnapshot writerSnapshot) {
+        Double ratingValue = writerSnapshot.getDouble("rating");
+        Long reviewsCount = writerSnapshot.getLong("reviewsCount");
+
+        tvRating.setText(formatRating(ratingValue));
+        tvStatRating.setText(formatRating(ratingValue));
+        tvReviews.setText("(" + (reviewsCount != null ? reviewsCount : 0L) + " reviews)");
+
+        firebaseFirestore.collection("Assignments")
+                .whereEqualTo("assignedWriterId", writerId)
+                .whereEqualTo("status", "Completed")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots ->
+                        tvCompleted.setText(String.valueOf(queryDocumentSnapshots.size()))
+                )
+                .addOnFailureListener(e -> tvCompleted.setText("0"));
     }
 
     private void loadAvatar(String profilePicUrl) {
@@ -346,6 +372,17 @@ public class WriterProfileFragment extends Fragment {
                 });
     }
 
+    private void callWriter() {
+        if (TextUtils.isEmpty(loadedMobile)) {
+            Toast.makeText(getContext(), "Writer mobile number not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(Intent.ACTION_DIAL);
+        intent.setData(Uri.parse("tel:" + loadedMobile));
+        startActivity(intent);
+    }
+
     private void resetSaveState() {
         btnSaveProfile.setEnabled(true);
         btnSaveProfile.setText("Save");
@@ -371,5 +408,12 @@ public class WriterProfileFragment extends Fragment {
 
     private String safe(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String formatRating(Double rating) {
+        if (rating == null || rating <= 0) {
+            return "N/A";
+        }
+        return String.format(java.util.Locale.US, "%.1f", rating);
     }
 }

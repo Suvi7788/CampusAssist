@@ -19,6 +19,8 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -114,17 +116,30 @@ public class BrowseAssignmentsFragment extends Fragment {
             @Override
             public void onAssignmentsLoaded(List<AssignmentModel> assignments) {
                 showLoading(false);
-                
+
                 if (assignments != null && !assignments.isEmpty()) {
-                    fullAssignmentList = assignments;
+                    List<AssignmentModel> openAssignments = new ArrayList<>();
+                    for (AssignmentModel assignment : assignments) {
+                        if (assignment != null
+                                && assignment.getStatus() != null
+                                && assignment.getStatus().equalsIgnoreCase("Open")) {
+                            openAssignments.add(assignment);
+                        }
+                    }
+
+                    // Show newest open assignments first.
+                    Collections.sort(openAssignments,
+                            Comparator.comparingLong(AssignmentModel::getCreatedAt).reversed());
+
+                    fullAssignmentList = openAssignments;
                     assignmentList.clear();
-                    assignmentList.addAll(assignments);
+                    assignmentList.addAll(openAssignments);
                     assignmentAdapter.notifyDataSetChanged();
-                    
+
                     // Generate dynamic chips based on available subjects
-                    generateSubjectChips(assignments);
-                    
-                    showNoData(false);
+                    generateSubjectChips(openAssignments);
+
+                    showNoData(openAssignments.isEmpty());
                 } else {
                     showNoData(true);
                     chipGroup.removeAllViews();

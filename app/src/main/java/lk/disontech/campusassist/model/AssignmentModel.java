@@ -23,4 +23,11 @@ public class AssignmentModel {
     private long createdAt;
     private long updatedAt;
     private String status; // "Open", "Assigned", "Completed"
+    private String assignedWriterId;
+    private String assignedWriterName;
+    private String submissionFileUrl;
+    private String submissionFileName;
+    private String submissionNotes;
+    private String submissionWriterId;
+    private long submissionAt;
 }

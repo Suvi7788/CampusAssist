@@ -109,7 +109,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- My Accepted Work -->
+            <!-- My Work -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_accepted"
                 android:layout_width="match_parent"
@@ -147,7 +147,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="My Accepted Work"
+                            android:text="My Work"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="17sp"
                             android:textStyle="bold" />
@@ -156,7 +156,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="View your ongoing projects"
+                            android:text="View your bids and assignment progress"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="13sp" />
                     </LinearLayout>

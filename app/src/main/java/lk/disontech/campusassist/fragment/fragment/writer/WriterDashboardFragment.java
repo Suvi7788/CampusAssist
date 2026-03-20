@@ -68,7 +68,7 @@ public class WriterDashboardFragment extends Fragment {
 
         cardAccepted.setOnClickListener(v -> {
             if (navigator != null) navigator.openAcceptedWork();
-            else toast("My Accepted Work");
+            else toast("My Work");
         });
 
         cardProfile.setOnClickListener(v -> {
