@@ -1,5 +1,6 @@
 package lk.disontech.campusassist.activity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
@@ -12,6 +13,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.auth.FirebaseAuth;
 
 import lk.disontech.campusassist.R;
 import lk.disontech.campusassist.fragment.fragment.student.BrowseWritersFragment;
@@ -20,9 +22,12 @@ import lk.disontech.campusassist.fragment.fragment.student.MyAssignmentsFragment
 import lk.disontech.campusassist.fragment.fragment.student.NotificationsFragment;
 import lk.disontech.campusassist.fragment.fragment.student.PostNewAssignmentFragment;
 import lk.disontech.campusassist.fragment.fragment.student.StudentDashboardFragment;
+import lk.disontech.campusassist.fragment.fragment.student.WriterProfileFragment;
 import lk.disontech.campusassist.fragment.fragment.writer.BrowseAssignmentsFragment;
 import lk.disontech.campusassist.fragment.fragment.writer.MyAcceptedWorkFragment;
+import lk.disontech.campusassist.fragment.fragment.writer.WriterEarningsFragment;
 import lk.disontech.campusassist.fragment.fragment.writer.WriterDashboardFragment;
+import lk.disontech.campusassist.fragment.fragment.writer.WriterSubmissionsFragment;
 
 public class DashboardActivity extends AppCompatActivity
         implements StudentDashboardFragment.StudentDashboardNavigator,
@@ -113,7 +118,7 @@ public class DashboardActivity extends AppCompatActivity
             } else if (id == R.id.nav_help) {
                 openHelpGuidelines();
             } else if (id == R.id.nav_logout) {
-                Toast.makeText(this, "Logout clicked", Toast.LENGTH_SHORT).show();
+                logoutUser();
             }
 
             drawerLayout.closeDrawer(GravityCompat.START);
@@ -132,13 +137,13 @@ public class DashboardActivity extends AppCompatActivity
             } else if (id == R.id.nav_my_work) {
                 openAcceptedWork();
             } else if (id == R.id.nav_submissions) {
-                Toast.makeText(this, "Open Submissions screen", Toast.LENGTH_SHORT).show();
+                openSubmissions();
             } else if (id == R.id.nav_earnings) {
-                Toast.makeText(this, "Open Earnings screen", Toast.LENGTH_SHORT).show();
+                openEarnings();
             } else if (id == R.id.nav_notifications) {
                 openNotifications();
             } else if (id == R.id.nav_logout) {
-                Toast.makeText(this, "Logout clicked", Toast.LENGTH_SHORT).show();
+                logoutUser();
             }
 
             drawerLayout.closeDrawer(GravityCompat.START);
@@ -198,7 +203,23 @@ public class DashboardActivity extends AppCompatActivity
 
     @Override
     public void openProfile() {
-        Toast.makeText(this, "Open Profile screen", Toast.LENGTH_SHORT).show();
+        openFragment(new WriterProfileFragment());
+    }
+
+    private void openSubmissions() {
+        openFragment(new WriterSubmissionsFragment());
+    }
+
+    private void openEarnings() {
+        openFragment(new WriterEarningsFragment());
+    }
+
+    private void logoutUser() {
+        FirebaseAuth.getInstance().signOut();
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     @Override
