@@ -12,6 +12,7 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
@@ -35,6 +36,7 @@ public class DashboardActivity extends AppCompatActivity
 
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
+    private BottomNavigationView bottomNavigationView;
     private String role = "student";
 
     @Override
@@ -44,6 +46,7 @@ public class DashboardActivity extends AppCompatActivity
 
         drawerLayout = findViewById(R.id.drawerLayout);
         navigationView = findViewById(R.id.navigationView);
+        bottomNavigationView = findViewById(R.id.bottomNavigationView);
 
         String intentRole = getIntent().getStringExtra("role");
         if (intentRole != null && !intentRole.trim().isEmpty()) {
@@ -52,6 +55,7 @@ public class DashboardActivity extends AppCompatActivity
 
         setupHeader();
         setupMenuByRole();
+        setupBottomNavByRole();
 
         if (savedInstanceState == null) {
             if ("writer".equals(role)) {
@@ -59,11 +63,13 @@ public class DashboardActivity extends AppCompatActivity
                         .beginTransaction()
                         .replace(R.id.dashboardContainer, new WriterDashboardFragment())
                         .commit();
+                bottomNavigationView.setSelectedItemId(R.id.nav_bottom_writer_home);
             } else {
                 getSupportFragmentManager()
                         .beginTransaction()
                         .replace(R.id.dashboardContainer, new StudentDashboardFragment())
                         .commit();
+                bottomNavigationView.setSelectedItemId(R.id.nav_bottom_student_home);
             }
         }
 
@@ -156,6 +162,45 @@ public class DashboardActivity extends AppCompatActivity
                 .beginTransaction()
                 .replace(R.id.dashboardContainer, fragment)
                 .commit();
+    }
+
+    private void setupBottomNavByRole() {
+        if (bottomNavigationView == null) {
+            return;
+        }
+
+        bottomNavigationView.getMenu().clear();
+        if ("writer".equals(role)) {
+            bottomNavigationView.inflateMenu(R.menu.bottom_nav_writer);
+            bottomNavigationView.setOnItemSelectedListener(item -> {
+                int id = item.getItemId();
+                if (id == R.id.nav_bottom_writer_home) {
+                    replaceRootFragment(new WriterDashboardFragment());
+                } else if (id == R.id.nav_bottom_writer_available) {
+                    replaceRootFragment(new BrowseAssignmentsFragment());
+                } else if (id == R.id.nav_bottom_writer_work) {
+                    replaceRootFragment(new MyAcceptedWorkFragment());
+                } else if (id == R.id.nav_bottom_writer_notifications) {
+                    replaceRootFragment(new NotificationsFragment());
+                }
+                return true;
+            });
+        } else {
+            bottomNavigationView.inflateMenu(R.menu.bottom_nav_student);
+            bottomNavigationView.setOnItemSelectedListener(item -> {
+                int id = item.getItemId();
+                if (id == R.id.nav_bottom_student_home) {
+                    replaceRootFragment(new StudentDashboardFragment());
+                } else if (id == R.id.nav_bottom_student_post) {
+                    replaceRootFragment(new PostNewAssignmentFragment());
+                } else if (id == R.id.nav_bottom_student_assignments) {
+                    replaceRootFragment(new MyAssignmentsFragment());
+                } else if (id == R.id.nav_bottom_student_notifications) {
+                    replaceRootFragment(new NotificationsFragment());
+                }
+                return true;
+            });
+        }
     }
 
     private void openFragment(Fragment fragment) {
