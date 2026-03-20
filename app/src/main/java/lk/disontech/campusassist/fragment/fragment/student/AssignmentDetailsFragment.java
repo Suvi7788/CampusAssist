@@ -60,7 +60,7 @@ public class AssignmentDetailsFragment extends Fragment {
     private MaterialCardView studentBidsSection;
     private MaterialCardView writerWorkSection;
     private RecyclerView recyclerBids;
-    private TextView tvNoBids, tvWriterWorkStatus, tvSubmissionFileName;
+    private TextView tvNoBids, tvWriterWorkStatus, tvSubmissionFileName, tvEditDeleteRestrictionMessage;
     private MaterialButton btnEdit, btnDelete, btnSave, btnCancel;
     private MaterialButton btnBidForAssignment, btnStartWork, btnPickSubmissionFile, btnSubmitCompletedWork;
     private TextInputEditText etSubmissionNotes;
@@ -161,6 +161,7 @@ public class AssignmentDetailsFragment extends Fragment {
         writerWorkSection = view.findViewById(R.id.writerWorkSection);
         recyclerBids = view.findViewById(R.id.recyclerBids);
         tvNoBids = view.findViewById(R.id.tvNoBids);
+        tvEditDeleteRestrictionMessage = view.findViewById(R.id.tvEditDeleteRestrictionMessage);
         tvWriterWorkStatus = view.findViewById(R.id.tvWriterWorkStatus);
         tvSubmissionFileName = view.findViewById(R.id.tvSubmissionFileName);
         btnStartWork = view.findViewById(R.id.btnStartWork);
@@ -291,6 +292,9 @@ public class AssignmentDetailsFragment extends Fragment {
         if (isWriterView) {
             btnEdit.setVisibility(View.GONE);
             btnDelete.setVisibility(View.GONE);
+            if (tvEditDeleteRestrictionMessage != null) {
+                tvEditDeleteRestrictionMessage.setVisibility(View.GONE);
+            }
             studentBidsSection.setVisibility(View.GONE);
 
             if (fromMyWork) {
@@ -308,9 +312,34 @@ public class AssignmentDetailsFragment extends Fragment {
         } else {
             btnBidForAssignment.setVisibility(View.GONE);
             writerWorkSection.setVisibility(View.GONE);
+            applyStudentEditDeleteState();
             studentBidsSection.setVisibility(View.VISIBLE);
             loadBidsForAssignment();
         }
+    }
+
+    private void applyStudentEditDeleteState() {
+        if (btnEdit == null || btnDelete == null) {
+            return;
+        }
+
+        boolean canEditDelete = isStudentEditDeleteAllowed();
+        btnEdit.setVisibility(canEditDelete ? View.VISIBLE : View.GONE);
+        btnDelete.setVisibility(canEditDelete ? View.VISIBLE : View.GONE);
+
+        if (tvEditDeleteRestrictionMessage != null) {
+            if (canEditDelete) {
+                tvEditDeleteRestrictionMessage.setVisibility(View.GONE);
+            } else {
+                String statusLabel = TextUtils.isEmpty(assignmentStatus) ? "This" : assignmentStatus;
+                tvEditDeleteRestrictionMessage.setText(statusLabel + " assignments cannot be edited or deleted.");
+                tvEditDeleteRestrictionMessage.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    private boolean isStudentEditDeleteAllowed() {
+        return !isWriterView && !TextUtils.isEmpty(assignmentStatus) && assignmentStatus.equalsIgnoreCase("Open");
     }
 
     private void setupWriterWorkSection() {
@@ -739,6 +768,11 @@ public class AssignmentDetailsFragment extends Fragment {
     }
 
     private void enableEditMode() {
+        if (!isStudentEditDeleteAllowed()) {
+            Toast.makeText(getContext(), "Only open assignments can be edited", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         isEditMode = true;
         detailsViewLayout.setVisibility(View.GONE);
         editModeLayout.setVisibility(View.VISIBLE);
@@ -867,6 +901,11 @@ public class AssignmentDetailsFragment extends Fragment {
     }
 
     private void showDeleteConfirmation() {
+        if (!isStudentEditDeleteAllowed()) {
+            Toast.makeText(getContext(), "Only open assignments can be deleted", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         new AlertDialog.Builder(requireContext())
                 .setTitle("Delete Assignment")
                 .setMessage("Are you sure you want to delete this assignment? This action cannot be undone.")
