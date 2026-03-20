@@ -61,6 +61,7 @@ public class AssignmentDetailsFragment extends Fragment {
     private String newFileName = "";
     private Uri selectedFileUri = null;
     private boolean isEditMode = false;
+    private boolean isWriterView = false;
     private ProgressDialog progressDialog;
 
     private final ActivityResultLauncher<String> filePickerLauncher =
@@ -125,6 +126,7 @@ public class AssignmentDetailsFragment extends Fragment {
         // Get data from Bundle arguments passed from MyAssignmentsFragment
         Bundle args = getArguments();
         if (args != null) {
+            isWriterView = args.getBoolean("isWriterView", false);
             String title = args.getString("title", "");
             String subject = args.getString("subject", "");
             String deadline = args.getString("deadline", "");
@@ -163,6 +165,17 @@ public class AssignmentDetailsFragment extends Fragment {
             tvTitle.setText("Assignment Details");
             tvDescription.setText("No assignment data available");
             attachmentRow.setVisibility(View.GONE);
+        }
+
+        // Fallback to role from Dashboard intent when not explicitly passed in arguments.
+        if (!isWriterView && getActivity() != null && getActivity().getIntent() != null) {
+            String role = getActivity().getIntent().getStringExtra("role");
+            isWriterView = role != null && role.equalsIgnoreCase("writer");
+        }
+
+        if (isWriterView) {
+            btnEdit.setVisibility(View.GONE);
+            btnDelete.setVisibility(View.GONE);
         }
 
         // Handle attachment row click

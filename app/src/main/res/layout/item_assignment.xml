@@ -93,7 +93,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="16dp"
-            android:text="Accept Assignment"
+            android:text="View Details"
             android:textAllCaps="false"
             android:textColor="?attr/colorOnPrimary"
             android:textSize="15sp"

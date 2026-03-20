@@ -83,6 +83,7 @@ public class BrowseAssignmentsFragment extends Fragment {
             b.putString("description", model.getDescription());
             b.putString("studentName", model.getStudentName());
             b.putString("status", "Accepted");
+            b.putBoolean("isWriterView", true);
 
             AssignmentDetailsFragment fragment = new AssignmentDetailsFragment();
             fragment.setArguments(b);
