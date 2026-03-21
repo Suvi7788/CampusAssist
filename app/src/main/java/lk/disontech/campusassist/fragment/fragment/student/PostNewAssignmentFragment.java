@@ -40,7 +40,7 @@ import lk.disontech.campusassist.model.User;
 
 public class PostNewAssignmentFragment extends Fragment {
 
-    private TextInputEditText etTitle, etDescription, etDeadline;
+    private TextInputEditText etTitle, etDescription, etDeadline, etPaymentAmount;
     private MaterialAutoCompleteTextView actvSubject;
     private MaterialButton btnAttach, btnSubmit, btnSelectLocation;
     private TextView tvAttachmentName, tvSelectedLocation;
@@ -94,6 +94,7 @@ public class PostNewAssignmentFragment extends Fragment {
         actvSubject = view.findViewById(R.id.actvSubject);
         etDescription = view.findViewById(R.id.etDescription);
         etDeadline = view.findViewById(R.id.etDeadline);
+        etPaymentAmount = view.findViewById(R.id.etPaymentAmount);
         btnAttach = view.findViewById(R.id.btnAttach);
         btnSelectLocation = view.findViewById(R.id.btnSelectLocation);
         btnSubmit = view.findViewById(R.id.btnSubmit);
@@ -184,6 +185,8 @@ public class PostNewAssignmentFragment extends Fragment {
         String subject = actvSubject.getText() != null ? actvSubject.getText().toString().trim() : "";
         String desc = etDescription.getText() != null ? etDescription.getText().toString().trim() : "";
         String deadline = etDeadline.getText() != null ? etDeadline.getText().toString().trim() : "";
+        String paymentAmountText = etPaymentAmount.getText() != null ? etPaymentAmount.getText().toString().trim() : "";
+        double paymentAmount;
 
         // Validation
         if (TextUtils.isEmpty(title)) {
@@ -206,6 +209,24 @@ public class PostNewAssignmentFragment extends Fragment {
             etDeadline.requestFocus();
             return;
         }
+        if (TextUtils.isEmpty(paymentAmountText)) {
+            etPaymentAmount.setError("Payment amount is required");
+            etPaymentAmount.requestFocus();
+            return;
+        }
+        try {
+            paymentAmount = Double.parseDouble(paymentAmountText);
+        } catch (NumberFormatException e) {
+            etPaymentAmount.setError("Enter a valid numeric amount");
+            etPaymentAmount.requestFocus();
+            return;
+        }
+        if (paymentAmount <= 0) {
+            etPaymentAmount.setError("Amount must be greater than 0");
+            etPaymentAmount.requestFocus();
+            return;
+        }
+        etPaymentAmount.setError(null);
         if (selectedLatitude == null || selectedLongitude == null || TextUtils.isEmpty(selectedAddress)) {
             Toast.makeText(requireContext(), "Please select delivery address on map", Toast.LENGTH_SHORT).show();
             return;
@@ -240,6 +261,7 @@ public class PostNewAssignmentFragment extends Fragment {
                                     subject,
                                     desc,
                                     deadline,
+                                    paymentAmount,
                                     selectedAddress,
                                     selectedLatitude,
                                     selectedLongitude
@@ -254,6 +276,7 @@ public class PostNewAssignmentFragment extends Fragment {
                                     subject,
                                     desc,
                                     deadline,
+                                    paymentAmount,
                                     "",
                                     "",
                                     selectedAddress,
@@ -274,6 +297,7 @@ public class PostNewAssignmentFragment extends Fragment {
 
     private void uploadFileAndSaveAssignment(String studentId, String studentName, String studentEmail,
                                            String title, String subject, String desc, String deadline,
+                                           double paymentAmount,
                                            String deliveryAddress, Double deliveryLatitude, Double deliveryLongitude) {
         progressDialog.show();
 
@@ -297,6 +321,7 @@ public class PostNewAssignmentFragment extends Fragment {
                                 subject,
                                 desc,
                                 deadline,
+                                paymentAmount,
                                 fileUrl,
                                 selectedFileName,
                                 deliveryAddress,
@@ -322,6 +347,7 @@ public class PostNewAssignmentFragment extends Fragment {
 
     private void saveAssignmentToFirestore(String studentId, String studentName, String studentEmail,
                                           String title, String subject, String desc, String deadline,
+                                          double paymentAmount,
                                           String fileUrl, String fileName,
                                           String deliveryAddress, Double deliveryLatitude, Double deliveryLongitude) {
         // Create assignment ID
@@ -337,6 +363,7 @@ public class PostNewAssignmentFragment extends Fragment {
                 .subject(subject)
                 .description(desc)
                 .deadline(deadline)
+                .paymentAmount(paymentAmount)
                 .fileUrl(fileUrl)
                 .fileName(fileName)
                 .deliveryAddress(deliveryAddress)
@@ -372,6 +399,7 @@ public class PostNewAssignmentFragment extends Fragment {
         actvSubject.setText("");
         etDescription.setText("");
         etDeadline.setText("");
+        etPaymentAmount.setText("");
         selectedFileUri = null;
         selectedFileName = "";
         tvAttachmentName.setText("");

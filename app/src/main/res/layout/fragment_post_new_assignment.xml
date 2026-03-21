@@ -152,6 +152,32 @@
                             android:hint="mm/dd/yyyy" />
                     </com.google.android.material.textfield.TextInputLayout>
 
+                    <!-- Payment Amount -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="Payment Amount"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/tilPaymentAmount"
+                        style="?attr/textInputOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="Enter amount"
+                        app:prefixText="LKR ">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etPaymentAmount"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="numberDecimal" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
                     <!-- Attachment -->
                     <TextView
                         android:layout_width="wrap_content"

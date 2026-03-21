@@ -18,6 +18,7 @@ public class AssignmentModel {
     private String subject;
     private String description;
     private String deadline;
+    private Double paymentAmount;
     private String deliveryAddress;
     private Double deliveryLatitude;
     private Double deliveryLongitude;
