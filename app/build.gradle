@@ -48,11 +48,13 @@ dependencies {
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
     implementation libs.fragment
-    implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
-    implementation 'com.google.firebase:firebase-auth'
-    implementation("com.google.firebase:firebase-analytics")
-    implementation 'com.google.firebase:firebase-firestore'
-    implementation 'com.google.firebase:firebase-storage:20.3.0'
-    compileOnly 'org.projectlombok:lombok:1.18.42'
-    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    implementation(libs.firebase.bom.v3490)
+    implementation libs.firebase.auth
+    implementation(libs.google.firebase.analytics)
+    implementation libs.firebase.firestore
+    implementation libs.firebase.storage
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
+    implementation libs.payhere.android.sdk
+    implementation libs.gson
 }
