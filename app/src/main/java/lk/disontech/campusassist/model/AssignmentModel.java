@@ -18,6 +18,9 @@ public class AssignmentModel {
     private String subject;
     private String description;
     private String deadline;
+    private String deliveryAddress;
+    private Double deliveryLatitude;
+    private Double deliveryLongitude;
     private String fileUrl;
     private String fileName;
     private long createdAt;

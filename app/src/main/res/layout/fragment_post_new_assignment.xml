@@ -186,6 +186,40 @@
                         android:textSize="12sp"
                         android:visibility="gone" />
 
+                    <!-- Delivery Address -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="Delivery Address"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSelectLocation"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="8dp"
+                        android:text="Choose on Map"
+                        android:textAllCaps="false"
+                        android:textColor="?attr/colorPrimary"
+                        app:cornerRadius="24dp"
+                        app:icon="@android:drawable/ic_menu_mylocation"
+                        app:iconPadding="8dp"
+                        app:strokeColor="?attr/colorOutline"
+                        app:strokeWidth="1dp"
+                        style="?attr/materialButtonOutlinedStyle" />
+
+                    <TextView
+                        android:id="@+id/tvSelectedLocation"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="No address selected"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp" />
+
                     <!-- Submit Button -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnSubmit"

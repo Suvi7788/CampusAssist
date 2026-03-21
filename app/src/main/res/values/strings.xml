@@ -2,6 +2,7 @@
 
     <!-- App -->
     <string name="app_name">CampusAssist</string>
+    <string name="google_maps_key">AIzaSyCUmam1ZUO6RQPDaAdt06HfnXFWbF59MUI</string>
 
     <!-- Drawer -->
     <string name="open">Open Drawer</string>

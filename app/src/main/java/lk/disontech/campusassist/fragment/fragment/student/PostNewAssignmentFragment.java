@@ -42,12 +42,15 @@ public class PostNewAssignmentFragment extends Fragment {
 
     private TextInputEditText etTitle, etDescription, etDeadline;
     private MaterialAutoCompleteTextView actvSubject;
-    private MaterialButton btnAttach, btnSubmit;
-    private TextView tvAttachmentName;
+    private MaterialButton btnAttach, btnSubmit, btnSelectLocation;
+    private TextView tvAttachmentName, tvSelectedLocation;
     private ProgressBar progressPostAssignment;
 
     private Uri selectedFileUri = null;
     private String selectedFileName = "";
+    private Double selectedLatitude;
+    private Double selectedLongitude;
+    private String selectedAddress = "";
 
     // Firebase
     private FirebaseAuth firebaseAuth;
@@ -92,8 +95,10 @@ public class PostNewAssignmentFragment extends Fragment {
         etDescription = view.findViewById(R.id.etDescription);
         etDeadline = view.findViewById(R.id.etDeadline);
         btnAttach = view.findViewById(R.id.btnAttach);
+        btnSelectLocation = view.findViewById(R.id.btnSelectLocation);
         btnSubmit = view.findViewById(R.id.btnSubmit);
         tvAttachmentName = view.findViewById(R.id.tvAttachmentName);
+        tvSelectedLocation = view.findViewById(R.id.tvSelectedLocation);
         progressPostAssignment = view.findViewById(R.id.progressPostAssignment);
 
         // Back button
@@ -119,10 +124,39 @@ public class PostNewAssignmentFragment extends Fragment {
         // File attachment
         btnAttach.setOnClickListener(v -> filePickerLauncher.launch("*/*"));
 
+        btnSelectLocation.setOnClickListener(v -> openLocationPicker());
+
+        getParentFragmentManager().setFragmentResultListener(
+                LocationPickerFragment.RESULT_KEY,
+                getViewLifecycleOwner(),
+                (requestKey, result) -> {
+                    if (!result.containsKey(LocationPickerFragment.KEY_LATITUDE)
+                            || !result.containsKey(LocationPickerFragment.KEY_LONGITUDE)) {
+                        return;
+                    }
+                    selectedLatitude = result.getDouble(LocationPickerFragment.KEY_LATITUDE);
+                    selectedLongitude = result.getDouble(LocationPickerFragment.KEY_LONGITUDE);
+                    selectedAddress = result.getString(LocationPickerFragment.KEY_ADDRESS, "");
+
+                    if (TextUtils.isEmpty(selectedAddress)) {
+                        selectedAddress = "Lat: " + selectedLatitude + ", Lng: " + selectedLongitude;
+                    }
+                    tvSelectedLocation.setText(selectedAddress);
+                }
+        );
+
         // Submit
         btnSubmit.setOnClickListener(v -> submit());
 
         return view;
+    }
+
+    private void openLocationPicker() {
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.dashboardContainer, new LocationPickerFragment())
+                .addToBackStack(null)
+                .commit();
     }
 
     private void openDatePicker() {
@@ -172,6 +206,10 @@ public class PostNewAssignmentFragment extends Fragment {
             etDeadline.requestFocus();
             return;
         }
+        if (selectedLatitude == null || selectedLongitude == null || TextUtils.isEmpty(selectedAddress)) {
+            Toast.makeText(requireContext(), "Please select delivery address on map", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         // Check if user is logged in
         if (firebaseAuth.getCurrentUser() == null) {
@@ -194,10 +232,34 @@ public class PostNewAssignmentFragment extends Fragment {
 
                         // Upload file if selected
                         if (selectedFileUri != null) {
-                            uploadFileAndSaveAssignment(studentId, studentName, studentEmail, title, subject, desc, deadline);
+                            uploadFileAndSaveAssignment(
+                                    studentId,
+                                    studentName,
+                                    studentEmail,
+                                    title,
+                                    subject,
+                                    desc,
+                                    deadline,
+                                    selectedAddress,
+                                    selectedLatitude,
+                                    selectedLongitude
+                            );
                         } else {
                             // Save assignment without file
-                            saveAssignmentToFirestore(studentId, studentName, studentEmail, title, subject, desc, deadline, "", "");
+                            saveAssignmentToFirestore(
+                                    studentId,
+                                    studentName,
+                                    studentEmail,
+                                    title,
+                                    subject,
+                                    desc,
+                                    deadline,
+                                    "",
+                                    "",
+                                    selectedAddress,
+                                    selectedLatitude,
+                                    selectedLongitude
+                            );
                         }
                     } else {
                         setSubmitLoading(false);
@@ -211,7 +273,8 @@ public class PostNewAssignmentFragment extends Fragment {
     }
 
     private void uploadFileAndSaveAssignment(String studentId, String studentName, String studentEmail,
-                                           String title, String subject, String desc, String deadline) {
+                                           String title, String subject, String desc, String deadline,
+                                           String deliveryAddress, Double deliveryLatitude, Double deliveryLongitude) {
         progressDialog.show();
 
         // Create unique file name with timestamp
@@ -226,7 +289,20 @@ public class PostNewAssignmentFragment extends Fragment {
                     // Get download URL
                     fileReference.getDownloadUrl().addOnSuccessListener(uri -> {
                         String fileUrl = uri.toString();
-                        saveAssignmentToFirestore(studentId, studentName, studentEmail, title, subject, desc, deadline, fileUrl, selectedFileName);
+                        saveAssignmentToFirestore(
+                                studentId,
+                                studentName,
+                                studentEmail,
+                                title,
+                                subject,
+                                desc,
+                                deadline,
+                                fileUrl,
+                                selectedFileName,
+                                deliveryAddress,
+                                deliveryLatitude,
+                                deliveryLongitude
+                        );
                     }).addOnFailureListener(e -> {
                         progressDialog.dismiss();
                         setSubmitLoading(false);
@@ -246,7 +322,8 @@ public class PostNewAssignmentFragment extends Fragment {
 
     private void saveAssignmentToFirestore(String studentId, String studentName, String studentEmail,
                                           String title, String subject, String desc, String deadline,
-                                          String fileUrl, String fileName) {
+                                          String fileUrl, String fileName,
+                                          String deliveryAddress, Double deliveryLatitude, Double deliveryLongitude) {
         // Create assignment ID
         String assignmentId = firebaseFirestore.collection("Assignments").document().getId();
 
@@ -262,6 +339,9 @@ public class PostNewAssignmentFragment extends Fragment {
                 .deadline(deadline)
                 .fileUrl(fileUrl)
                 .fileName(fileName)
+                .deliveryAddress(deliveryAddress)
+                .deliveryLatitude(deliveryLatitude)
+                .deliveryLongitude(deliveryLongitude)
                 .createdAt(System.currentTimeMillis())
                 .updatedAt(System.currentTimeMillis())
                 .status("Open")
@@ -296,6 +376,10 @@ public class PostNewAssignmentFragment extends Fragment {
         selectedFileName = "";
         tvAttachmentName.setText("");
         tvAttachmentName.setVisibility(View.GONE);
+        selectedLatitude = null;
+        selectedLongitude = null;
+        selectedAddress = "";
+        tvSelectedLocation.setText("No address selected");
         setSubmitLoading(false);
     }
 
@@ -359,6 +443,9 @@ public class PostNewAssignmentFragment extends Fragment {
         }
         if (btnAttach != null) {
             btnAttach.setEnabled(!isLoading);
+        }
+        if (btnSelectLocation != null) {
+            btnSelectLocation.setEnabled(!isLoading);
         }
     }
 }
