@@ -67,6 +67,7 @@ public class AssignmentDetailsFragment extends Fragment {
     private TextView tvNoBids, tvWriterWorkStatus, tvSubmissionFileName, tvEditDeleteRestrictionMessage;
     private MaterialButton btnEdit, btnDelete, btnSave, btnCancel;
     private MaterialButton btnBidForAssignment, btnStartWork, btnPickSubmissionFile, btnSubmitCompletedWork;
+    private MaterialButton btnPayNow;
     private TextInputEditText etSubmissionNotes;
     private LinearLayout completeWorkSection;
     private FirebaseFirestore firebaseFirestore;
@@ -176,6 +177,7 @@ public class AssignmentDetailsFragment extends Fragment {
         btnSubmitCompletedWork = view.findViewById(R.id.btnSubmitCompletedWork);
         etSubmissionNotes = view.findViewById(R.id.etSubmissionNotes);
         completeWorkSection = view.findViewById(R.id.completeWorkSection);
+        btnPayNow = view.findViewById(R.id.btnPayNow);
 
         bidWriterAdapter = new BidWriterAdapter(new BidWriterAdapter.BidActionListener() {
             @Override
@@ -287,6 +289,7 @@ public class AssignmentDetailsFragment extends Fragment {
         btnStartWork.setOnClickListener(v -> startWork());
         btnPickSubmissionFile.setOnClickListener(v -> submissionFilePickerLauncher.launch("*/*"));
         btnSubmitCompletedWork.setOnClickListener(v -> submitCompletedWork());
+        btnPayNow.setOnClickListener(v -> onPayNowClicked());
 
         return view;
     }
@@ -303,6 +306,7 @@ public class AssignmentDetailsFragment extends Fragment {
                 tvEditDeleteRestrictionMessage.setVisibility(View.GONE);
             }
             studentBidsSection.setVisibility(View.GONE);
+            btnPayNow.setVisibility(View.GONE);
 
             if (fromMyWork) {
                 btnBidForAssignment.setVisibility(View.GONE);
@@ -322,6 +326,10 @@ public class AssignmentDetailsFragment extends Fragment {
             applyStudentEditDeleteState();
             studentBidsSection.setVisibility(View.VISIBLE);
             loadBidsForAssignment();
+
+            // Show Pay Now button only when payment is pending
+            boolean isPendingPayment = "Pending Payment".equalsIgnoreCase(assignmentStatus);
+            btnPayNow.setVisibility(isPendingPayment ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -1070,6 +1078,11 @@ public class AssignmentDetailsFragment extends Fragment {
         ContentResolver contentResolver = requireContext().getContentResolver();
         android.webkit.MimeTypeMap mimeTypeMap = android.webkit.MimeTypeMap.getSingleton();
         return "." + mimeTypeMap.getExtensionFromMimeType(contentResolver.getType(uri));
+    }
+
+    private void onPayNowClicked() {
+        // TODO: Integrate payment gateway (e.g. PayHere via browser/Custom Tab)
+        Toast.makeText(getContext(), "Payment flow coming soon!", Toast.LENGTH_SHORT).show();
     }
 
     private void sendNotification(String recipientUserId,
