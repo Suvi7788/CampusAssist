@@ -13,17 +13,17 @@ lombok = "1.18.42"
 material = "1.13.0"
 activity = "1.12.4"
 constraintlayout = "2.2.1"
-payhereAndroidSdk = "v3.0.18"
+payhereAndroidSdk = "3.0.18"
 
 [libraries]
-firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
-firebase-auth = { module = "com.google.firebase:firebase-auth" }
+firebase-analytics = { module = "com.google.firebase:firebase-analytics", version = "22.0.2" }
+firebase-auth = { module = "com.google.firebase:firebase-auth", version = "23.0.0" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-bom-v3490 = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBomVersion" }
-firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
+firebase-firestore = { module = "com.google.firebase:firebase-firestore", version = "25.1.0" }
 firebase-storage = { module = "com.google.firebase:firebase-storage", version.ref = "firebaseStorage" }
 fragment = { module = "androidx.fragment:fragment", version.ref = "fragment" }
-google-firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+google-firebase-analytics = { module = "com.google.firebase:firebase-analytics", version = "22.0.2" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

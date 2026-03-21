@@ -1,5 +1,6 @@
 package lk.disontech.campusassist.fragment.fragment.student;
 
+import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
@@ -51,6 +52,11 @@ import lk.disontech.campusassist.model.NotificationModel;
 import lk.disontech.campusassist.model.User;
 import lk.disontech.campusassist.repository.BidRepository;
 import lk.disontech.campusassist.repository.NotificationRepository;
+import lk.payhere.androidsdk.PHConstants;
+import lk.payhere.androidsdk.PHMainActivity;
+import lk.payhere.androidsdk.model.Address;
+import lk.payhere.androidsdk.model.Customer;
+import lk.payhere.androidsdk.model.InitRequest;
 
 public class AssignmentDetailsFragment extends Fragment {
 
@@ -72,6 +78,11 @@ public class AssignmentDetailsFragment extends Fragment {
     private ProgressBar progressAssignmentDetails;
     private TextInputEditText etSubmissionNotes;
     private LinearLayout completeWorkSection;
+    private MaterialCardView paymentSuccessBanner;
+    private MaterialCardView submittedWorkCard;
+    private TextView tvSubmittedFileNameStudent;
+    private MaterialButton btnViewSubmittedFile;
+    private TextView tvWriterNoteStudent;
     private FirebaseFirestore firebaseFirestore;
     private FirebaseStorage firebaseStorage;
     private StorageReference storageReference;
@@ -93,10 +104,14 @@ public class AssignmentDetailsFragment extends Fragment {
     private Uri selectedFileUri = null;
     private Uri submissionFileUri = null;
     private String submissionFileName = "";
+    private String assignedWriterId = "";
+    private String submissionFileUrlForStudent = "";
     private boolean isEditMode = false;
     private boolean isWriterView = false;
     private boolean fromMyWork = false;
     private ProgressDialog progressDialog;
+    private static final String PAYHERE_SANDBOX_MERCHANT_ID = "1226330";
+    private static final String PAYHERE_SANDBOX_MERCHANT_SECRET = "MTg4NjMxOTM2NTIwNzQ4NjMyNTAzNDkxNTAxNzc3Mzk2MDE2MTk4OA==";
 
     private final ActivityResultLauncher<String> filePickerLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -114,6 +129,34 @@ public class AssignmentDetailsFragment extends Fragment {
                     submissionFileName = getFileName(uri);
                     tvSubmissionFileName.setText(submissionFileName == null || submissionFileName.isEmpty()
                             ? "No file selected" : submissionFileName);
+                }
+            });
+
+    private final ActivityResultLauncher<Intent> payHereLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    Intent data = result.getData();
+                    int statusCode = (data != null)
+                            ? data.getIntExtra(PHConstants.INTENT_EXTRA_STATUS, -1)
+                            : -1;
+                    String payMessage = (data != null)
+                            ? data.getStringExtra(PHConstants.INTENT_EXTRA_MESSAGE)
+                            : null;
+
+                    // Status 2 = Authorized/Completed; -1 means no explicit status (treat as success)
+                    if (statusCode == 2 || statusCode == -1) {
+                        handlePaymentSuccess();
+                    } else if (statusCode == 1) {
+                        Toast.makeText(getContext(),
+                                "Payment is pending confirmation." + (payMessage != null ? " " + payMessage : ""),
+                                Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(getContext(),
+                                "Payment was not completed." + (payMessage != null ? " " + payMessage : ""),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(getContext(), "Payment cancelled.", Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -181,6 +224,11 @@ public class AssignmentDetailsFragment extends Fragment {
         completeWorkSection = view.findViewById(R.id.completeWorkSection);
         btnPayNow = view.findViewById(R.id.btnPayNow);
         progressAssignmentDetails = view.findViewById(R.id.progressAssignmentDetails);
+        paymentSuccessBanner = view.findViewById(R.id.paymentSuccessBanner);
+        submittedWorkCard = view.findViewById(R.id.submittedWorkCard);
+        tvSubmittedFileNameStudent = view.findViewById(R.id.tvSubmittedFileNameStudent);
+        btnViewSubmittedFile = view.findViewById(R.id.btnViewSubmittedFile);
+        tvWriterNoteStudent = view.findViewById(R.id.tvWriterNoteStudent);
 
         bidWriterAdapter = new BidWriterAdapter(new BidWriterAdapter.BidActionListener() {
             @Override
@@ -333,7 +381,22 @@ public class AssignmentDetailsFragment extends Fragment {
 
             // Show Pay Now button only when payment is pending
             boolean isPendingPayment = "Pending Payment".equalsIgnoreCase(assignmentStatus);
+            boolean isCompleted = "Completed".equalsIgnoreCase(assignmentStatus);
+
             btnPayNow.setVisibility(isPendingPayment ? View.VISIBLE : View.GONE);
+
+            // Show payment success banner and submitted work when Completed
+            if (paymentSuccessBanner != null) {
+                paymentSuccessBanner.setVisibility(isCompleted ? View.VISIBLE : View.GONE);
+            }
+            if (submittedWorkCard != null) {
+                submittedWorkCard.setVisibility(isCompleted ? View.VISIBLE : View.GONE);
+            }
+
+            // Wire up the "View" button for submitted file
+            if (btnViewSubmittedFile != null) {
+                btnViewSubmittedFile.setOnClickListener(v -> openSubmittedFile());
+            }
         }
     }
 
@@ -369,6 +432,8 @@ public class AssignmentDetailsFragment extends Fragment {
         assignmentId = safe(assignment.getAssignmentId());
         studentId = safe(assignment.getStudentId());
         fileUrl = safe(assignment.getFileUrl());
+        assignedWriterId = safe(assignment.getAssignedWriterId());
+        submissionFileUrlForStudent = safe(assignment.getSubmissionFileUrl());
 
         String title = safe(assignment.getTitle());
         String subject = safe(assignment.getSubject());
@@ -398,11 +463,24 @@ public class AssignmentDetailsFragment extends Fragment {
             etAttachmentName.setText("No file selected");
         }
 
+        // Writer's work submission fields (writer-side inputs)
         if (!TextUtils.isEmpty(assignment.getSubmissionFileName())) {
             tvSubmissionFileName.setText(assignment.getSubmissionFileName());
         }
         if (!TextUtils.isEmpty(assignment.getSubmissionNotes())) {
             etSubmissionNotes.setText(assignment.getSubmissionNotes());
+        }
+
+        // Student-facing submitted work section
+        String subFileName = safe(assignment.getSubmissionFileName());
+        String subNotes = safe(assignment.getSubmissionNotes());
+        if (tvSubmittedFileNameStudent != null) {
+            tvSubmittedFileNameStudent.setText(
+                    TextUtils.isEmpty(subFileName) ? "No file available" : subFileName);
+        }
+        if (tvWriterNoteStudent != null) {
+            tvWriterNoteStudent.setText(
+                    TextUtils.isEmpty(subNotes) ? "No notes from writer." : subNotes);
         }
     }
 
@@ -1183,8 +1261,205 @@ public class AssignmentDetailsFragment extends Fragment {
     }
 
     private void onPayNowClicked() {
-        // TODO: Integrate payment gateway (e.g. PayHere via browser/Custom Tab)
-        Toast.makeText(getContext(), "Payment flow coming soon!", Toast.LENGTH_SHORT).show();
+        if (!"Pending Payment".equalsIgnoreCase(assignmentStatus)) {
+            Toast.makeText(getContext(), "Payment is not required for this assignment", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            InitRequest payment = new InitRequest();
+            payment.setSandBox(true);
+            payment.setMerchantId(PAYHERE_SANDBOX_MERCHANT_ID);
+            payment.setMerchantSecret(PAYHERE_SANDBOX_MERCHANT_SECRET);
+            payment.setNotifyUrl("https://example.com/payhere/notify");
+            payment.setOrderId("ASSIGN-" + assignmentId + "-" + System.currentTimeMillis());
+            payment.setItemsDescription("Assignment payment - " + getAssignmentTitleText());
+            payment.setAmount(1000.00);
+            payment.setCurrency("LKR");
+
+            Customer customer = new Customer();
+            customer.setFirstName("Student");
+            customer.setLastName("User");
+            customer.setEmail(firebaseAuth.getCurrentUser() != null && firebaseAuth.getCurrentUser().getEmail() != null
+                    ? firebaseAuth.getCurrentUser().getEmail() : "student@example.com");
+            customer.setPhone("0770000000");
+
+            Address billingAddress = customer.getAddress();
+            if (billingAddress != null) {
+                billingAddress.setAddress("No 1, Main Street");
+                billingAddress.setCity("Colombo");
+                billingAddress.setCountry("Sri Lanka");
+            }
+
+            Address deliveryAddress = new Address();
+            deliveryAddress.setAddress("No 1, Main Street");
+            deliveryAddress.setCity("Colombo");
+            deliveryAddress.setCountry("Sri Lanka");
+            customer.setDeliveryAddress(deliveryAddress);
+
+            payment.setCustomer(customer);
+
+            Intent payHereIntent = new Intent(requireContext(), PHMainActivity.class);
+            payHereIntent.putExtra(PHConstants.INTENT_EXTRA_DATA, payment);
+            payHereLauncher.launch(payHereIntent);
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Unable to open payment: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void handlePaymentSuccess() {
+        if (TextUtils.isEmpty(assignmentId)) {
+            Toast.makeText(getContext(), "Invalid assignment", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressDialog.setTitle("Completing Payment");
+        progressDialog.setMessage("Please wait...");
+        progressDialog.show();
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("status", "Completed");
+        updates.put("paymentStatus", "Completed");
+        updates.put("paymentCompletedAt", System.currentTimeMillis());
+        updates.put("updatedAt", System.currentTimeMillis());
+
+        firebaseFirestore.collection("Assignments").document(assignmentId)
+                .update(updates)
+                .addOnSuccessListener(unused -> {
+                    // Reload the assignment from Firestore to get latest submission details
+                    firebaseFirestore.collection("Assignments").document(assignmentId).get()
+                            .addOnSuccessListener(doc -> {
+                                progressDialog.dismiss();
+
+                                if (doc.exists()) {
+                                    lk.disontech.campusassist.model.AssignmentModel assignment =
+                                            doc.toObject(lk.disontech.campusassist.model.AssignmentModel.class);
+                                    if (assignment != null) {
+                                        submissionFileUrlForStudent = safe(assignment.getSubmissionFileUrl());
+                                        String subFileName = safe(assignment.getSubmissionFileName());
+                                        String subNotes = safe(assignment.getSubmissionNotes());
+                                        String writerIdForNotif = safe(assignment.getAssignedWriterId());
+
+                                        // Update student-facing submitted work UI
+                                        if (tvSubmittedFileNameStudent != null) {
+                                            tvSubmittedFileNameStudent.setText(
+                                                    TextUtils.isEmpty(subFileName) ? "No file available" : subFileName);
+                                        }
+                                        if (tvWriterNoteStudent != null) {
+                                            tvWriterNoteStudent.setText(
+                                                    TextUtils.isEmpty(subNotes) ? "No notes from writer." : subNotes);
+                                        }
+
+                                        // Send notification to student
+                                        sendNotification(
+                                                studentId,
+                                                "student",
+                                                "Payment Completed",
+                                                "Payment was completed for " + getAssignmentTitleText()
+                                                        + ", and the assignment is now completed.",
+                                                assignmentId,
+                                                getAssignmentTitleText(),
+                                                "Completed",
+                                                ""
+                                        );
+
+                                        // Send notification to writer
+                                        if (!TextUtils.isEmpty(writerIdForNotif)) {
+                                            sendNotification(
+                                                    writerIdForNotif,
+                                                    "writer",
+                                                    "Payment Completed",
+                                                    "Payment was completed for " + getAssignmentTitleText()
+                                                            + ", and the assignment is now completed.",
+                                                    assignmentId,
+                                                    getAssignmentTitleText(),
+                                                    "Completed",
+                                                    "Completed"
+                                            );
+                                        } else if (!TextUtils.isEmpty(assignedWriterId)) {
+                                            sendNotification(
+                                                    assignedWriterId,
+                                                    "writer",
+                                                    "Payment Completed",
+                                                    "Payment was completed for " + getAssignmentTitleText()
+                                                            + ", and the assignment is now completed.",
+                                                    assignmentId,
+                                                    getAssignmentTitleText(),
+                                                    "Completed",
+                                                    "Completed"
+                                            );
+                                        }
+                                    }
+                                }
+
+                                // Update local state and refresh UI
+                                assignmentStatus = "Completed";
+                                btnPayNow.setVisibility(View.GONE);
+                                if (paymentSuccessBanner != null) {
+                                    paymentSuccessBanner.setVisibility(View.VISIBLE);
+                                }
+                                if (submittedWorkCard != null) {
+                                    submittedWorkCard.setVisibility(View.VISIBLE);
+                                }
+                                applyStudentEditDeleteState();
+
+                                // Show success dialog
+                                new AlertDialog.Builder(requireContext())
+                                        .setTitle("✅ Payment Successful")
+                                        .setMessage("Payment completed successfully.\n\nYour assignment is now complete. You can view and download the submitted work below.")
+                                        .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                                        .show();
+                            })
+                            .addOnFailureListener(e -> {
+                                progressDialog.dismiss();
+                                // Status update succeeded; still update UI
+                                assignmentStatus = "Completed";
+                                btnPayNow.setVisibility(View.GONE);
+                                if (paymentSuccessBanner != null) {
+                                    paymentSuccessBanner.setVisibility(View.VISIBLE);
+                                }
+                                if (submittedWorkCard != null) {
+                                    submittedWorkCard.setVisibility(View.VISIBLE);
+                                }
+
+                                // Notifications with cached IDs
+                                sendNotification(studentId, "student",
+                                        "Payment Completed",
+                                        "Payment was completed for " + getAssignmentTitleText()
+                                                + ", and the assignment is now completed.",
+                                        assignmentId, getAssignmentTitleText(), "Completed", "");
+
+                                if (!TextUtils.isEmpty(assignedWriterId)) {
+                                    sendNotification(assignedWriterId, "writer",
+                                            "Payment Completed",
+                                            "Payment was completed for " + getAssignmentTitleText()
+                                                    + ", and the assignment is now completed.",
+                                            assignmentId, getAssignmentTitleText(), "Completed", "Completed");
+                                }
+
+                                Toast.makeText(getContext(), "Payment completed successfully.", Toast.LENGTH_LONG).show();
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(getContext(),
+                            "Payment recorded but failed to update status: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
+    }
+
+    private void openSubmittedFile() {
+        if (TextUtils.isEmpty(submissionFileUrlForStudent)) {
+            Toast.makeText(getContext(), "No submitted file available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setData(Uri.parse(submissionFileUrlForStudent));
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Error opening file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private String safe(String value) {
