@@ -901,6 +901,66 @@
                                 android:gravity="top" />
                         </com.google.android.material.textfield.TextInputLayout>
 
+                        <!-- Payment Amount (Edit) -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:text="Payment Amount"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilEditPaymentAmount"
+                            style="?attr/textInputOutlinedStyle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:hint="Enter amount"
+                            app:prefixText="LKR ">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etEditPaymentAmount"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="numberDecimal" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Delivery Address (Edit) -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:text="Delivery Address"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnEditSelectLocation"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="8dp"
+                            android:text="Choose on Map"
+                            android:textAllCaps="false"
+                            android:textColor="?attr/colorPrimary"
+                            app:cornerRadius="24dp"
+                            app:icon="@android:drawable/ic_menu_mylocation"
+                            app:iconPadding="8dp"
+                            app:strokeColor="?attr/colorOutline"
+                            app:strokeWidth="1dp" />
+
+                        <TextView
+                            android:id="@+id/tvEditSelectedLocation"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="No address selected"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="12sp" />
+
                         <!-- File Attachment Section -->
                         <TextView
                             android:layout_width="match_parent"

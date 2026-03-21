@@ -122,6 +122,15 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     private String deliveryAddressText = "";
     private Double deliveryLatitude = null;
     private Double deliveryLongitude = null;
+
+    // Edit-mode fields for payment and location
+    private TextInputEditText etEditPaymentAmount;
+    private MaterialButton btnEditSelectLocation;
+    private TextView tvEditSelectedLocation;
+    private Double editSelectedLatitude = null;
+    private Double editSelectedLongitude = null;
+    private String editSelectedAddress = "";
+
     private GoogleMap deliveryPreviewMap;
     private Marker deliveryLocationMarker;
     private boolean isEditMode = false;
@@ -248,6 +257,11 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         paymentSuccessBanner = view.findViewById(R.id.paymentSuccessBanner);
         submittedWorkCard = view.findViewById(R.id.submittedWorkCard);
         deliveryMapCard = view.findViewById(R.id.deliveryMapCard);
+
+        // Edit-mode payment and location fields
+        etEditPaymentAmount = view.findViewById(R.id.etEditPaymentAmount);
+        btnEditSelectLocation = view.findViewById(R.id.btnEditSelectLocation);
+        tvEditSelectedLocation = view.findViewById(R.id.tvEditSelectedLocation);
         tvSubmittedFileNameStudent = view.findViewById(R.id.tvSubmittedFileNameStudent);
         btnViewSubmittedFile = view.findViewById(R.id.btnViewSubmittedFile);
         tvWriterNoteStudent = view.findViewById(R.id.tvWriterNoteStudent);
@@ -371,6 +385,39 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
 
         // Handle cancel button click
         btnCancel.setOnClickListener(v -> disableEditMode());
+
+        // Handle edit-mode location picker
+        btnEditSelectLocation.setOnClickListener(v -> openLocationPickerForEdit());
+
+        // Listen for location picker result (used by both PostNew and Edit modes)
+        getParentFragmentManager().setFragmentResultListener(
+                LocationPickerFragment.RESULT_KEY,
+                getViewLifecycleOwner(),
+                (requestKey, result) -> {
+                    if (result.containsKey(LocationPickerFragment.KEY_LATITUDE)
+                            && result.containsKey(LocationPickerFragment.KEY_LONGITUDE)) {
+                        editSelectedLatitude = result.getDouble(LocationPickerFragment.KEY_LATITUDE);
+                        editSelectedLongitude = result.getDouble(LocationPickerFragment.KEY_LONGITUDE);
+                        editSelectedAddress = result.getString(LocationPickerFragment.KEY_ADDRESS, "");
+                        if (TextUtils.isEmpty(editSelectedAddress)) {
+                            editSelectedAddress = "Lat: " + editSelectedLatitude + ", Lng: " + editSelectedLongitude;
+                        }
+                        if (tvEditSelectedLocation != null) {
+                            tvEditSelectedLocation.setText(editSelectedAddress);
+                        }
+                    }
+                }
+        );
+
+        // Restore edit mode layout if returning from location picker
+        if (isEditMode) {
+            detailsViewLayout.setVisibility(View.GONE);
+            editModeLayout.setVisibility(View.VISIBLE);
+            btnEdit.setEnabled(false);
+            btnDelete.setEnabled(false);
+            setupSubjectDropdown();
+            prefillEditFields();
+        }
 
         // Handle writer bid action
         btnBidForAssignment.setOnClickListener(v -> placeBidForAssignment());
@@ -1197,6 +1244,37 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         dialog.show();
     }
 
+    private void openLocationPickerForEdit() {
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.dashboardContainer, new LocationPickerFragment())
+                .addToBackStack(null)
+                .commit();
+    }
+
+    private void prefillEditFields() {
+        // Pre-fill payment amount
+        if (etEditPaymentAmount != null) {
+            if (paymentAmount != null && paymentAmount > 0) {
+                etEditPaymentAmount.setText(String.format(Locale.US, "%.2f", paymentAmount));
+            } else {
+                etEditPaymentAmount.setText("");
+            }
+        }
+        // Pre-fill delivery address
+        if (!TextUtils.isEmpty(editSelectedAddress)) {
+            // Already updated by location picker result – don't overwrite
+        } else {
+            editSelectedLatitude = deliveryLatitude;
+            editSelectedLongitude = deliveryLongitude;
+            editSelectedAddress = deliveryAddressText != null ? deliveryAddressText : "";
+        }
+        if (tvEditSelectedLocation != null) {
+            tvEditSelectedLocation.setText(
+                    TextUtils.isEmpty(editSelectedAddress) ? "No address selected" : editSelectedAddress);
+        }
+    }
+
     private void enableEditMode() {
         if (!isStudentEditDeleteAllowed()) {
             Toast.makeText(getContext(), "Only open assignments can be edited", Toast.LENGTH_SHORT).show();
@@ -1204,12 +1282,18 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         }
 
         isEditMode = true;
+        // Reset edit-location state from current saved values
+        editSelectedLatitude = deliveryLatitude;
+        editSelectedLongitude = deliveryLongitude;
+        editSelectedAddress = deliveryAddressText != null ? deliveryAddressText : "";
+
         detailsViewLayout.setVisibility(View.GONE);
         editModeLayout.setVisibility(View.VISIBLE);
         btnEdit.setEnabled(false);
         btnDelete.setEnabled(false);
         selectedFileUri = null;
         newFileUrl = "";
+        prefillEditFields();
         // Re-setup dropdown to ensure items are visible
         setupSubjectDropdown();
     }
@@ -1224,6 +1308,10 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         selectedFileUri = null;
         newFileName = currentFileName;
         etAttachmentName.setText(currentFileName != null && !currentFileName.isEmpty() ? currentFileName : "No file selected");
+        // Reset edit-location state
+        editSelectedLatitude = null;
+        editSelectedLongitude = null;
+        editSelectedAddress = "";
     }
 
     private void saveChanges() {
@@ -1250,16 +1338,48 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             return;
         }
 
+        // Validate payment amount
+        String paymentAmountText = etEditPaymentAmount.getText() != null
+                ? etEditPaymentAmount.getText().toString().trim() : "";
+        double newPaymentAmount;
+        if (TextUtils.isEmpty(paymentAmountText)) {
+            etEditPaymentAmount.setError("Payment amount is required");
+            etEditPaymentAmount.requestFocus();
+            return;
+        }
+        try {
+            newPaymentAmount = Double.parseDouble(paymentAmountText);
+        } catch (NumberFormatException e) {
+            etEditPaymentAmount.setError("Enter a valid numeric amount");
+            etEditPaymentAmount.requestFocus();
+            return;
+        }
+        if (newPaymentAmount <= 0) {
+            etEditPaymentAmount.setError("Amount must be greater than 0");
+            etEditPaymentAmount.requestFocus();
+            return;
+        }
+        etEditPaymentAmount.setError(null);
+
+        // Delivery address – keep existing if not changed
+        Double newDeliveryLatitude = editSelectedLatitude != null ? editSelectedLatitude : deliveryLatitude;
+        Double newDeliveryLongitude = editSelectedLongitude != null ? editSelectedLongitude : deliveryLongitude;
+        String newDeliveryAddress = !TextUtils.isEmpty(editSelectedAddress) ? editSelectedAddress : deliveryAddressText;
+
         // If file is selected, upload it first
         if (selectedFileUri != null) {
-            uploadFileAndUpdateAssignment(title, subject, deadline, description);
+            uploadFileAndUpdateAssignment(title, subject, deadline, description,
+                    newPaymentAmount, newDeliveryAddress, newDeliveryLatitude, newDeliveryLongitude);
         } else {
             // Update without file
-            updateAssignmentInFirestore(title, subject, deadline, description, fileUrl, currentFileName);
+            updateAssignmentInFirestore(title, subject, deadline, description, fileUrl, currentFileName,
+                    newPaymentAmount, newDeliveryAddress, newDeliveryLatitude, newDeliveryLongitude);
         }
     }
 
-    private void uploadFileAndUpdateAssignment(String title, String subject, String deadline, String description) {
+    private void uploadFileAndUpdateAssignment(String title, String subject, String deadline, String description,
+                                               double newPaymentAmount, String newDeliveryAddress,
+                                               Double newDeliveryLatitude, Double newDeliveryLongitude) {
         progressDialog.show();
 
         String fileExtension = getFileExtension(selectedFileUri);
@@ -1271,7 +1391,8 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                 .addOnSuccessListener(taskSnapshot -> {
                     fileReference.getDownloadUrl().addOnSuccessListener(uri -> {
                         newFileUrl = uri.toString();
-                        updateAssignmentInFirestore(title, subject, deadline, description, newFileUrl, newFileName);
+                        updateAssignmentInFirestore(title, subject, deadline, description, newFileUrl, newFileName,
+                                newPaymentAmount, newDeliveryAddress, newDeliveryLatitude, newDeliveryLongitude);
                     }).addOnFailureListener(e -> {
                         progressDialog.dismiss();
                         Toast.makeText(getContext(), "Error getting file URL: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -1288,18 +1409,25 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     }
 
     private void updateAssignmentInFirestore(String title, String subject, String deadline, String description,
-                                            String fileUrl, String fileName) {
+                                            String fileUrl, String fileName,
+                                            double newPaymentAmount, String newDeliveryAddress,
+                                            Double newDeliveryLatitude, Double newDeliveryLongitude) {
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("title", title);
+        updates.put("subject", subject);
+        updates.put("deadline", deadline);
+        updates.put("description", description);
+        updates.put("fileUrl", fileUrl);
+        updates.put("fileName", fileName);
+        updates.put("paymentAmount", newPaymentAmount);
+        updates.put("deliveryAddress", newDeliveryAddress != null ? newDeliveryAddress : "");
+        if (newDeliveryLatitude != null) updates.put("deliveryLatitude", newDeliveryLatitude);
+        if (newDeliveryLongitude != null) updates.put("deliveryLongitude", newDeliveryLongitude);
+        updates.put("updatedAt", System.currentTimeMillis());
+
         // Update in Firestore
         firebaseFirestore.collection("Assignments").document(assignmentId)
-                .update(
-                        "title", title,
-                        "subject", subject,
-                        "deadline", deadline,
-                        "description", description,
-                        "fileUrl", fileUrl,
-                        "fileName", fileName,
-                        "updatedAt", System.currentTimeMillis()
-                )
+                .update(updates)
                 .addOnSuccessListener(aVoid -> {
                     progressDialog.dismiss();
                     Toast.makeText(getContext(), "Assignment updated successfully! ✅", Toast.LENGTH_SHORT).show();
@@ -1309,6 +1437,13 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                     tvSubject.setText(subject);
                     tvDeadline.setText(deadline);
                     tvDescription.setText(description);
+
+                    // Update in-memory payment & location values
+                    paymentAmount = newPaymentAmount;
+                    deliveryAddressText = newDeliveryAddress != null ? newDeliveryAddress : "";
+                    if (newDeliveryLatitude != null) AssignmentDetailsFragment.this.deliveryLatitude = newDeliveryLatitude;
+                    if (newDeliveryLongitude != null) AssignmentDetailsFragment.this.deliveryLongitude = newDeliveryLongitude;
+                    renderPaymentAndLocation();
 
                     // Update file display
                     if (fileName != null && !fileName.isEmpty()) {
