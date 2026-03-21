@@ -464,12 +464,12 @@ public class AssignmentDetailsFragment extends Fragment {
         }
 
         // Writer's work submission fields (writer-side inputs)
-        if (!TextUtils.isEmpty(assignment.getSubmissionFileName())) {
-            tvSubmissionFileName.setText(assignment.getSubmissionFileName());
-        }
-        if (!TextUtils.isEmpty(assignment.getSubmissionNotes())) {
-            etSubmissionNotes.setText(assignment.getSubmissionNotes());
-        }
+        String writerSubmissionFileName = safe(assignment.getSubmissionFileName());
+        String writerSubmissionNotes = safe(assignment.getSubmissionNotes());
+        submissionFileName = writerSubmissionFileName;
+        tvSubmissionFileName.setText(TextUtils.isEmpty(writerSubmissionFileName)
+                ? "No file selected" : writerSubmissionFileName);
+        etSubmissionNotes.setText(writerSubmissionNotes);
 
         // Student-facing submitted work section
         String subFileName = safe(assignment.getSubmissionFileName());
@@ -534,18 +534,45 @@ public class AssignmentDetailsFragment extends Fragment {
 
     private void setupWriterWorkSection() {
         String statusToUse = !TextUtils.isEmpty(writerWorkStatus) ? writerWorkStatus : mapWriterStatusFromCurrentData();
+        boolean isInProgress = "In Progress".equalsIgnoreCase(statusToUse);
+        boolean isPendingPayment = "Pending Payment".equalsIgnoreCase(statusToUse);
+        boolean isCompleted = "Completed".equalsIgnoreCase(statusToUse);
 
         tvWriterWorkStatus.setText("Status: " + statusToUse);
         btnStartWork.setVisibility("Approved".equalsIgnoreCase(statusToUse) ? View.VISIBLE : View.GONE);
 
-        if ("In Progress".equalsIgnoreCase(statusToUse)) {
+        // Keep submitted details visible after work is submitted.
+        if (isInProgress || isPendingPayment || isCompleted) {
             completeWorkSection.setVisibility(View.VISIBLE);
+
+            if (isInProgress) {
+                btnPickSubmissionFile.setVisibility(View.VISIBLE);
+                btnSubmitCompletedWork.setVisibility(View.VISIBLE);
+                etSubmissionNotes.setEnabled(true);
+                tvSubmissionFileName.setOnClickListener(null);
+                tvSubmissionFileName.setClickable(false);
+            } else {
+                // Post-submission states are read-only for writer.
+                btnPickSubmissionFile.setVisibility(View.GONE);
+                btnSubmitCompletedWork.setVisibility(View.GONE);
+                etSubmissionNotes.setEnabled(false);
+
+                if (!TextUtils.isEmpty(submissionFileUrlForStudent)) {
+                    tvSubmissionFileName.setOnClickListener(v -> openSubmittedFile());
+                    tvSubmissionFileName.setClickable(true);
+                } else {
+                    tvSubmissionFileName.setOnClickListener(null);
+                    tvSubmissionFileName.setClickable(false);
+                }
+            }
         } else {
             completeWorkSection.setVisibility(View.GONE);
             submissionFileUri = null;
             submissionFileName = "";
             tvSubmissionFileName.setText("No file selected");
             etSubmissionNotes.setText("");
+            tvSubmissionFileName.setOnClickListener(null);
+            tvSubmissionFileName.setClickable(false);
         }
     }
 
@@ -647,6 +674,7 @@ public class AssignmentDetailsFragment extends Fragment {
                                     .update(updates)
                                     .addOnSuccessListener(unused -> {
                                         progressDialog.dismiss();
+                                        submissionFileUrlForStudent = uri.toString();
                                         assignmentStatus = "Pending Payment";
                                         writerWorkStatus = "Pending Payment";
                                         setupWriterWorkSection();
@@ -1514,3 +1542,4 @@ public class AssignmentDetailsFragment extends Fragment {
                 : "the student";
     }
 }
+
