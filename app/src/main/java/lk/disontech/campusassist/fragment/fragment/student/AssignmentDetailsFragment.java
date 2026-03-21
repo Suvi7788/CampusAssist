@@ -23,6 +23,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -31,6 +32,13 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -58,9 +66,10 @@ import lk.payhere.androidsdk.model.Address;
 import lk.payhere.androidsdk.model.Customer;
 import lk.payhere.androidsdk.model.InitRequest;
 
-public class AssignmentDetailsFragment extends Fragment {
+public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCallback {
 
     private TextView tvTitle, tvSubject, tvDeadline, tvStudent, tvDescription, tvAttachmentName, tvView;
+    private TextView tvPaymentAmount, tvDeliveryAddress;
     private TextInputEditText etTitle, etDescription, etDeadline;
     private MaterialAutoCompleteTextView actvSubject;
     private TextView etAttachmentName;
@@ -75,14 +84,17 @@ public class AssignmentDetailsFragment extends Fragment {
     private MaterialButton btnEdit, btnDelete, btnSave, btnCancel;
     private MaterialButton btnBidForAssignment, btnStartWork, btnPickSubmissionFile, btnSubmitCompletedWork;
     private MaterialButton btnPayNow;
+    private MaterialButton btnOpenDeliveryMap;
     private ProgressBar progressAssignmentDetails;
     private TextInputEditText etSubmissionNotes;
     private LinearLayout completeWorkSection;
     private MaterialCardView paymentSuccessBanner;
     private MaterialCardView submittedWorkCard;
+    private MaterialCardView deliveryMapCard;
     private TextView tvSubmittedFileNameStudent;
     private MaterialButton btnViewSubmittedFile;
     private TextView tvWriterNoteStudent;
+    private TextView tvMapPreviewHint;
     private FirebaseFirestore firebaseFirestore;
     private FirebaseStorage firebaseStorage;
     private StorageReference storageReference;
@@ -106,6 +118,12 @@ public class AssignmentDetailsFragment extends Fragment {
     private String submissionFileName = "";
     private String assignedWriterId = "";
     private String submissionFileUrlForStudent = "";
+    private Double paymentAmount = null;
+    private String deliveryAddressText = "";
+    private Double deliveryLatitude = null;
+    private Double deliveryLongitude = null;
+    private GoogleMap deliveryPreviewMap;
+    private Marker deliveryLocationMarker;
     private boolean isEditMode = false;
     private boolean isWriterView = false;
     private boolean fromMyWork = false;
@@ -193,6 +211,9 @@ public class AssignmentDetailsFragment extends Fragment {
         tvDescription = view.findViewById(R.id.tvDescription);
         tvAttachmentName = view.findViewById(R.id.tvAttachmentName);
         tvView = view.findViewById(R.id.tvView);
+        tvPaymentAmount = view.findViewById(R.id.tvPaymentAmount);
+        tvDeliveryAddress = view.findViewById(R.id.tvDeliveryAddress);
+        btnOpenDeliveryMap = view.findViewById(R.id.btnOpenDeliveryMap);
         attachmentRow = view.findViewById(R.id.attachmentRow);
         detailsViewLayout = view.findViewById(R.id.detailsViewLayout);
 
@@ -226,9 +247,11 @@ public class AssignmentDetailsFragment extends Fragment {
         progressAssignmentDetails = view.findViewById(R.id.progressAssignmentDetails);
         paymentSuccessBanner = view.findViewById(R.id.paymentSuccessBanner);
         submittedWorkCard = view.findViewById(R.id.submittedWorkCard);
+        deliveryMapCard = view.findViewById(R.id.deliveryMapCard);
         tvSubmittedFileNameStudent = view.findViewById(R.id.tvSubmittedFileNameStudent);
         btnViewSubmittedFile = view.findViewById(R.id.btnViewSubmittedFile);
         tvWriterNoteStudent = view.findViewById(R.id.tvWriterNoteStudent);
+        tvMapPreviewHint = view.findViewById(R.id.tvMapPreviewHint);
 
         bidWriterAdapter = new BidWriterAdapter(new BidWriterAdapter.BidActionListener() {
             @Override
@@ -270,6 +293,17 @@ public class AssignmentDetailsFragment extends Fragment {
             fileUrl = args.getString("fileUrl", "");
             assignmentId = args.getString("assignmentId", "");
             studentId = args.getString("studentId", "");
+            deliveryAddressText = args.getString("deliveryAddress", "");
+
+            if (args.containsKey("paymentAmount")) {
+                paymentAmount = args.getDouble("paymentAmount");
+            }
+            if (args.containsKey("deliveryLatitude")) {
+                deliveryLatitude = args.getDouble("deliveryLatitude");
+            }
+            if (args.containsKey("deliveryLongitude")) {
+                deliveryLongitude = args.getDouble("deliveryLongitude");
+            }
 
             currentFileName = fileName;
             newFileName = fileName;
@@ -286,6 +320,7 @@ public class AssignmentDetailsFragment extends Fragment {
             actvSubject.setText(subject, false);
             etDeadline.setText(deadline);
             etDescription.setText(description);
+            renderPaymentAndLocation();
 
             // Handle attachment display
             if (fileName != null && !fileName.isEmpty()) {
@@ -301,6 +336,7 @@ public class AssignmentDetailsFragment extends Fragment {
             tvTitle.setText("Assignment Details");
             tvDescription.setText("No assignment data available");
             attachmentRow.setVisibility(View.GONE);
+            renderPaymentAndLocation();
         }
 
         // Fallback to role from Dashboard intent when not explicitly passed in arguments.
@@ -342,6 +378,7 @@ public class AssignmentDetailsFragment extends Fragment {
         btnPickSubmissionFile.setOnClickListener(v -> submissionFilePickerLauncher.launch("*/*"));
         btnSubmitCompletedWork.setOnClickListener(v -> submitCompletedWork());
         btnPayNow.setOnClickListener(v -> onPayNowClicked());
+        btnOpenDeliveryMap.setOnClickListener(v -> openDeliveryLocationOnMap());
 
         return view;
     }
@@ -434,6 +471,10 @@ public class AssignmentDetailsFragment extends Fragment {
         fileUrl = safe(assignment.getFileUrl());
         assignedWriterId = safe(assignment.getAssignedWriterId());
         submissionFileUrlForStudent = safe(assignment.getSubmissionFileUrl());
+        paymentAmount = assignment.getPaymentAmount();
+        deliveryAddressText = safe(assignment.getDeliveryAddress());
+        deliveryLatitude = assignment.getDeliveryLatitude();
+        deliveryLongitude = assignment.getDeliveryLongitude();
 
         String title = safe(assignment.getTitle());
         String subject = safe(assignment.getSubject());
@@ -452,6 +493,7 @@ public class AssignmentDetailsFragment extends Fragment {
         actvSubject.setText(subject, false);
         etDeadline.setText(deadline);
         etDescription.setText(description);
+        renderPaymentAndLocation();
 
         currentFileName = fileName;
         if (!TextUtils.isEmpty(fileName)) {
@@ -482,6 +524,80 @@ public class AssignmentDetailsFragment extends Fragment {
             tvWriterNoteStudent.setText(
                     TextUtils.isEmpty(subNotes) ? "No notes from writer." : subNotes);
         }
+    }
+
+    private void renderPaymentAndLocation() {
+        if (tvPaymentAmount != null) {
+            if (paymentAmount != null && paymentAmount > 0) {
+                tvPaymentAmount.setText(String.format(Locale.US, "LKR %,.2f", paymentAmount));
+            } else {
+                tvPaymentAmount.setText("Not set");
+            }
+        }
+
+        if (tvDeliveryAddress != null) {
+            tvDeliveryAddress.setText(TextUtils.isEmpty(deliveryAddressText) ? "Not provided" : deliveryAddressText);
+        }
+
+        if (btnOpenDeliveryMap != null) {
+            boolean hasCoordinates = deliveryLatitude != null && deliveryLongitude != null;
+            boolean hasAddress = !TextUtils.isEmpty(deliveryAddressText);
+            btnOpenDeliveryMap.setVisibility((hasCoordinates || hasAddress) ? View.VISIBLE : View.GONE);
+        }
+
+        boolean hasCoordinates = deliveryLatitude != null && deliveryLongitude != null;
+        if (deliveryMapCard != null) {
+            deliveryMapCard.setVisibility(hasCoordinates ? View.VISIBLE : View.GONE);
+        }
+        if (hasCoordinates) {
+            ensureDeliveryMapPreview();
+            updateDeliveryMapPreview();
+            if (tvMapPreviewHint != null) {
+                tvMapPreviewHint.setText(TextUtils.isEmpty(deliveryAddressText)
+                        ? "Delivery location preview"
+                        : deliveryAddressText);
+            }
+        }
+    }
+
+    private void ensureDeliveryMapPreview() {
+        if (deliveryLatitude == null || deliveryLongitude == null || !isAdded()) {
+            return;
+        }
+
+        FragmentManager childManager = getChildFragmentManager();
+        SupportMapFragment mapFragment = (SupportMapFragment) childManager.findFragmentById(R.id.deliveryMapContainer);
+        if (mapFragment == null) {
+            mapFragment = SupportMapFragment.newInstance();
+            childManager.beginTransaction()
+                    .replace(R.id.deliveryMapContainer, mapFragment, "delivery_preview_map")
+                    .commitNowAllowingStateLoss();
+        }
+        mapFragment.getMapAsync(this);
+    }
+
+    @Override
+    public void onMapReady(@NonNull GoogleMap googleMap) {
+        deliveryPreviewMap = googleMap;
+        deliveryPreviewMap.getUiSettings().setMapToolbarEnabled(false);
+        deliveryPreviewMap.getUiSettings().setAllGesturesEnabled(false);
+        updateDeliveryMapPreview();
+    }
+
+    private void updateDeliveryMapPreview() {
+        if (deliveryPreviewMap == null || deliveryLatitude == null || deliveryLongitude == null) {
+            return;
+        }
+
+        LatLng deliveryLatLng = new LatLng(deliveryLatitude, deliveryLongitude);
+        if (deliveryLocationMarker == null) {
+            deliveryLocationMarker = deliveryPreviewMap.addMarker(
+                    new MarkerOptions().position(deliveryLatLng).title("Delivery Location")
+            );
+        } else {
+            deliveryLocationMarker.setPosition(deliveryLatLng);
+        }
+        deliveryPreviewMap.moveCamera(CameraUpdateFactory.newLatLngZoom(deliveryLatLng, 15f));
     }
 
     private void setDetailsLoading(boolean isLoading) {
@@ -1488,6 +1604,48 @@ public class AssignmentDetailsFragment extends Fragment {
         } catch (Exception e) {
             Toast.makeText(getContext(), "Error opening file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void openDeliveryLocationOnMap() {
+        if (deliveryLatitude == null || deliveryLongitude == null) {
+            if (TextUtils.isEmpty(deliveryAddressText)) {
+                Toast.makeText(getContext(), "Delivery location not available", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String addressQuery = Uri.encode(deliveryAddressText);
+            Intent addressIntent = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://www.google.com/maps/search/?api=1&query=" + addressQuery));
+
+            if (addressIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
+                startActivity(addressIntent);
+            } else {
+                Toast.makeText(getContext(), "No map app found", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+
+        String coordQuery = deliveryLatitude + "," + deliveryLongitude;
+        Intent mapIntent = new Intent(Intent.ACTION_VIEW,
+                Uri.parse("https://www.google.com/maps/search/?api=1&query=" + Uri.encode(coordQuery)));
+
+        if (mapIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
+            startActivity(mapIntent);
+        } else {
+            Toast.makeText(getContext(), "No map app found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        deliveryPreviewMap = null;
+        deliveryLocationMarker = null;
+        FragmentManager childManager = getChildFragmentManager();
+        Fragment mapFragment = childManager.findFragmentByTag("delivery_preview_map");
+        if (mapFragment != null) {
+            childManager.beginTransaction().remove(mapFragment).commitAllowingStateLoss();
+        }
+        super.onDestroyView();
     }
 
     private String safe(String value) {

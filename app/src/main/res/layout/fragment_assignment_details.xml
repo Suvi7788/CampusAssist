@@ -197,6 +197,94 @@
                             android:textStyle="bold" />
                     </LinearLayout>
 
+                    <!-- Payment amount row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="?attr/colorSecondary"
+                            android:padding="4dp"
+                            android:scaleType="centerInside"
+                            android:src="@android:drawable/ic_menu_info_details"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                            app:tint="?attr/colorOnSecondary" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:text="Price:"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:id="@+id/tvPaymentAmount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="LKR 0.00"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Delivery address row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="?attr/colorTertiary"
+                            android:padding="4dp"
+                            android:scaleType="centerInside"
+                            android:src="@android:drawable/ic_menu_mylocation"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                            app:tint="?attr/colorOnTertiary" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:text="Delivery:"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:id="@+id/tvDeliveryAddress"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:maxLines="2"
+                            android:text="Not provided"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOpenDeliveryMapInline"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="Open in Map"
+                        android:textAllCaps="false"
+                        android:visibility="gone"
+                        app:icon="@android:drawable/ic_menu_mapmode"
+                        app:iconGravity="textStart" />
+
                     <!-- Student row -->
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -670,6 +758,62 @@
                         android:text="No notes from writer."
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="14sp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Delivery Map Preview (bottom of details) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/deliveryMapCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Delivery Location"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <FrameLayout
+                        android:id="@+id/deliveryMapContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="170dp"
+                        android:layout_marginTop="12dp"
+                        android:background="?attr/colorSurfaceContainerHigh" />
+
+                    <TextView
+                        android:id="@+id/tvMapPreviewHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Map preview"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOpenDeliveryMap"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="Open in Map"
+                        android:textAllCaps="false"
+                        app:icon="@android:drawable/ic_menu_mapmode"
+                        app:iconGravity="textStart" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
