@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="16dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp"
+    app:strokeWidth="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/tvSubmissionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_toStartOf="@id/tvSubmissionStatus"
+                android:layout_marginEnd="12dp"
+                android:maxLines="2"
+                android:text="Assignment Title"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvSubmissionStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:layout_alignParentEnd="true"
+                android:background="@drawable/bg_status_blue"
+                android:gravity="center"
+                android:minWidth="78dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:text="Completed"
+                android:textColor="@android:color/white"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+        </RelativeLayout>
+
+        <TextView
+            android:id="@+id/tvSubmissionStudent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Student: John Doe"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tvSubmissionDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Submitted: 21 Mar 2026, 10:30 AM"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tvSubmissionPrice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Price: Pending"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnViewAssignment"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="16dp"
+            android:text="View Assignment"
+            android:textAllCaps="false"
+            android:textColor="?attr/colorPrimary"
+            app:cornerRadius="24dp"
+            app:strokeColor="?attr/colorOutline"
+            app:strokeWidth="1dp"
+            style="?attr/materialButtonOutlinedStyle" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
+
+
