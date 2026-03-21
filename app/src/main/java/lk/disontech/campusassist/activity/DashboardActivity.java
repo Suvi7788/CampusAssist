@@ -282,11 +282,13 @@ public class DashboardActivity extends AppCompatActivity
         openFragment(new WriterProfileFragment());
     }
 
-    private void openSubmissions() {
+    @Override
+    public void openSubmissions() {
         openFragment(new WriterSubmissionsFragment());
     }
 
-    private void openEarnings() {
+    @Override
+    public void openEarnings() {
         openFragment(new WriterEarningsFragment());
     }
 

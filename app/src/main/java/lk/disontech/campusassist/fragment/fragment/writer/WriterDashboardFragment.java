@@ -27,6 +27,8 @@ public class WriterDashboardFragment extends Fragment {
         void openBrowseAssignments();
         void openAcceptedWork();
         void openAcceptedWorkWithFilter(String status);
+        void openSubmissions();
+        void openEarnings();
         void openProfile();
         void openNotifications();
         void openDrawerOrMenu();
@@ -79,6 +81,8 @@ public class WriterDashboardFragment extends Fragment {
 
         View cardBrowse = view.findViewById(R.id.card_browse);
         View cardAccepted = view.findViewById(R.id.card_accepted);
+        View cardSubmissions = view.findViewById(R.id.card_submissions);
+        View cardEarnings = view.findViewById(R.id.card_earnings);
         View cardProfile = view.findViewById(R.id.card_profile);
         View cardNotifications = view.findViewById(R.id.card_notifications);
         View cardStatInProgress = view.findViewById(R.id.cardStatInProgress);
@@ -110,6 +114,16 @@ public class WriterDashboardFragment extends Fragment {
         cardAccepted.setOnClickListener(v -> {
             if (navigator != null) navigator.openAcceptedWork();
             else toast("My Work");
+        });
+
+        cardSubmissions.setOnClickListener(v -> {
+            if (navigator != null) navigator.openSubmissions();
+            else toast("Submissions");
+        });
+
+        cardEarnings.setOnClickListener(v -> {
+            if (navigator != null) navigator.openEarnings();
+            else toast("Earnings");
         });
 
         cardProfile.setOnClickListener(v -> {
