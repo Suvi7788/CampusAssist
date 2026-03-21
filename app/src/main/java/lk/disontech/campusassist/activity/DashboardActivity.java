@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
@@ -39,6 +38,8 @@ public class DashboardActivity extends AppCompatActivity
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private BottomNavigationView bottomNavigationView;
+    private View logoutLoadingOverlay;
+    private boolean isLogoutInProgress = false;
     private String role = "student";
 
     @Override
@@ -49,6 +50,7 @@ public class DashboardActivity extends AppCompatActivity
         drawerLayout = findViewById(R.id.drawerLayout);
         navigationView = findViewById(R.id.navigationView);
         bottomNavigationView = findViewById(R.id.bottomNavigationView);
+        logoutLoadingOverlay = findViewById(R.id.logoutLoadingOverlay);
 
         role = normalizeRole(getIntent().getStringExtra("role"));
 
@@ -108,6 +110,9 @@ public class DashboardActivity extends AppCompatActivity
 
     private void setupStudentMenuClicks() {
         navigationView.setNavigationItemSelectedListener(item -> {
+            if (isLogoutInProgress) {
+                return true;
+            }
             int id = item.getItemId();
 
             if (id == R.id.nav_home) {
@@ -133,6 +138,9 @@ public class DashboardActivity extends AppCompatActivity
 
     private void setupWriterMenuClicks() {
         navigationView.setNavigationItemSelectedListener(item -> {
+            if (isLogoutInProgress) {
+                return true;
+            }
             int id = item.getItemId();
 
             if (id == R.id.nav_writer_home) {
@@ -172,6 +180,9 @@ public class DashboardActivity extends AppCompatActivity
         if ("writer".equals(role)) {
             bottomNavigationView.inflateMenu(R.menu.bottom_nav_writer);
             bottomNavigationView.setOnItemSelectedListener(item -> {
+                if (isLogoutInProgress) {
+                    return false;
+                }
                 int id = item.getItemId();
                 if (id == R.id.nav_bottom_writer_home) {
                     replaceRootFragment(new WriterDashboardFragment());
@@ -187,6 +198,9 @@ public class DashboardActivity extends AppCompatActivity
         } else {
             bottomNavigationView.inflateMenu(R.menu.bottom_nav_student);
             bottomNavigationView.setOnItemSelectedListener(item -> {
+                if (isLogoutInProgress) {
+                    return false;
+                }
                 int id = item.getItemId();
                 if (id == R.id.nav_bottom_student_home) {
                     replaceRootFragment(new StudentDashboardFragment());
@@ -277,11 +291,29 @@ public class DashboardActivity extends AppCompatActivity
     }
 
     private void logoutUser() {
+        if (isLogoutInProgress) {
+            return;
+        }
+
+        setLogoutLoading(true);
         FirebaseAuth.getInstance().signOut();
         Intent intent = new Intent(this, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void setLogoutLoading(boolean isLoading) {
+        isLogoutInProgress = isLoading;
+        if (logoutLoadingOverlay != null) {
+            logoutLoadingOverlay.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        if (navigationView != null) {
+            navigationView.setEnabled(!isLoading);
+        }
+        if (bottomNavigationView != null) {
+            bottomNavigationView.setEnabled(!isLoading);
+        }
     }
 
     @Override

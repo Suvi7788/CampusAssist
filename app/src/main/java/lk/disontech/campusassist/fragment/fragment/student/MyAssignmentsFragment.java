@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -39,6 +40,8 @@ public class MyAssignmentsFragment extends Fragment {
     private FirebaseFirestore firebaseFirestore;
     private TextInputEditText etSearchAssignments;
     private MaterialAutoCompleteTextView actvAssignmentStatusFilter;
+    private ProgressBar progressMyAssignments;
+    private TextView tvMyAssignmentsLoading;
     private final List<AssignmentModel> fullAssignments = new ArrayList<>();
     private String selectedStatusFilter = "All";
 
@@ -58,6 +61,8 @@ public class MyAssignmentsFragment extends Fragment {
         assignmentContainer = view.findViewById(R.id.assignmentContainer);
         etSearchAssignments = view.findViewById(R.id.etSearchAssignments);
         actvAssignmentStatusFilter = view.findViewById(R.id.actvAssignmentStatusFilter);
+        progressMyAssignments = view.findViewById(R.id.progressMyAssignments);
+        tvMyAssignmentsLoading = view.findViewById(R.id.tvMyAssignmentsLoading);
 
         toolbar.setNavigationOnClickListener(v ->
                 requireActivity().onBackPressed()
@@ -77,6 +82,7 @@ public class MyAssignmentsFragment extends Fragment {
             return;
         }
 
+        showLoadingState(true, "Loading assignments...");
         String studentId = firebaseAuth.getCurrentUser().getUid();
 
         // Query Firestore for assignments where studentId matches the current user
@@ -89,8 +95,10 @@ public class MyAssignmentsFragment extends Fragment {
                     fullAssignments.clear();
                     fullAssignments.addAll(assignments);
                     applyFilters(inflater);
+                    showLoadingState(false, "");
                 })
                 .addOnFailureListener(e -> {
+                    showLoadingState(false, "");
                     Toast.makeText(requireContext(), "Error loading assignments: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
@@ -121,7 +129,11 @@ public class MyAssignmentsFragment extends Fragment {
 
         actvAssignmentStatusFilter.setOnItemClickListener((parent, view, position, id) -> {
             selectedStatusFilter = statusOptions[position];
-            applyFilters(LayoutInflater.from(requireContext()));
+            showLoadingState(true, "Applying filter...");
+            assignmentContainer.post(() -> {
+                applyFilters(LayoutInflater.from(requireContext()));
+                showLoadingState(false, "");
+            });
         });
 
         etSearchAssignments.addTextChangedListener(new TextWatcher() {
@@ -131,7 +143,11 @@ public class MyAssignmentsFragment extends Fragment {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                applyFilters(LayoutInflater.from(requireContext()));
+                showLoadingState(true, "Applying filter...");
+                assignmentContainer.post(() -> {
+                    applyFilters(LayoutInflater.from(requireContext()));
+                    showLoadingState(false, "");
+                });
             }
 
             @Override
@@ -301,5 +317,15 @@ public class MyAssignmentsFragment extends Fragment {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private void showLoadingState(boolean isLoading, String message) {
+        if (progressMyAssignments != null) {
+            progressMyAssignments.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        if (tvMyAssignmentsLoading != null) {
+            tvMyAssignmentsLoading.setText(message == null || message.isEmpty() ? "Loading..." : message);
+            tvMyAssignmentsLoading.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
     }
 }

@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -35,6 +36,8 @@ public class NotificationsFragment extends Fragment {
 
     private LinearLayout notificationsContainer;
     private TextView tvNotificationsEmpty;
+    private ProgressBar progressNotifications;
+    private TextView tvNotificationsLoading;
     private MaterialButton btnMarkAllAsRead;
     private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firebaseFirestore;
@@ -58,6 +61,8 @@ public class NotificationsFragment extends Fragment {
 
         notificationsContainer = view.findViewById(R.id.notificationsContainer);
         tvNotificationsEmpty = view.findViewById(R.id.tvNotificationsEmpty);
+        progressNotifications = view.findViewById(R.id.progressNotifications);
+        tvNotificationsLoading = view.findViewById(R.id.tvNotificationsLoading);
         btnMarkAllAsRead = view.findViewById(R.id.btnMarkAllAsRead);
 
         btnMarkAllAsRead.setOnClickListener(v -> markAllAsRead());
@@ -76,7 +81,9 @@ public class NotificationsFragment extends Fragment {
     }
 
     private void listenForNotifications(LayoutInflater inflater) {
+        setLoadingState(true);
         if (firebaseAuth.getCurrentUser() == null) {
+            setLoadingState(false);
             tvNotificationsEmpty.setVisibility(View.VISIBLE);
             return;
         }
@@ -86,6 +93,7 @@ public class NotificationsFragment extends Fragment {
                 new NotificationRepository.OnNotificationsLoadedCallback() {
                     @Override
                     public void onNotificationsLoaded(List<NotificationModel> notifications) {
+                        setLoadingState(false);
                         notificationsContainer.removeAllViews();
 
                         if (notifications == null || notifications.isEmpty()) {
@@ -104,9 +112,22 @@ public class NotificationsFragment extends Fragment {
 
                     @Override
                     public void onError(String errorMessage) {
+                        setLoadingState(false);
                         Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    private void setLoadingState(boolean isLoading) {
+        if (progressNotifications != null) {
+            progressNotifications.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        if (tvNotificationsLoading != null) {
+            tvNotificationsLoading.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        if (btnMarkAllAsRead != null) {
+            btnMarkAllAsRead.setEnabled(!isLoading);
+        }
     }
 
     private void addNotification(LayoutInflater inflater, NotificationModel notification) {

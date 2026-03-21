@@ -61,6 +61,25 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
+        <ProgressBar
+            android:id="@+id/progressMyAssignments"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvMyAssignmentsLoading"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="Loading assignments..."
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
         <!-- Assignment List Container -->
         <LinearLayout
             android:id="@+id/assignmentContainer"

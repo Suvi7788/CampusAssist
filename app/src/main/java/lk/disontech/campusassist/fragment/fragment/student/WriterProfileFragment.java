@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ProgressBar;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -39,6 +40,7 @@ public class WriterProfileFragment extends Fragment {
     private com.google.android.material.imageview.ShapeableImageView imgAvatar;
     private View editProfileSection;
     private MaterialButton btnEditProfile, btnChangeProfileImage, btnSaveProfile, btnCancelEdit, btnCallWriter;
+    private ProgressBar progressSaveProfile;
     private TextInputEditText etFirstName, etLastName, etMobile, etEmail, etBio, etInterests;
     private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firebaseFirestore;
@@ -92,6 +94,7 @@ public class WriterProfileFragment extends Fragment {
         btnSaveProfile = view.findViewById(R.id.btnSaveProfile);
         btnCancelEdit = view.findViewById(R.id.btnCancelEdit);
         btnCallWriter = view.findViewById(R.id.btnCallWriter);
+        progressSaveProfile = view.findViewById(R.id.progressSaveProfile);
         editProfileSection = view.findViewById(R.id.editProfileSection);
 
         etFirstName = view.findViewById(R.id.etFirstName);
@@ -299,8 +302,7 @@ public class WriterProfileFragment extends Fragment {
             return;
         }
 
-        btnSaveProfile.setEnabled(false);
-        btnSaveProfile.setText("Saving...");
+        setProfileSaving(true);
 
         updateUserDocument(firstName, lastName, mobile, bio, interests, currentProfilePicUrl);
     }
@@ -384,10 +386,25 @@ public class WriterProfileFragment extends Fragment {
     }
 
     private void resetSaveState() {
-        btnSaveProfile.setEnabled(true);
-        btnSaveProfile.setText("Save");
+        setProfileSaving(false);
         btnEditProfile.setVisibility(View.VISIBLE);
         editProfileSection.setVisibility(View.GONE);
+    }
+
+    private void setProfileSaving(boolean isSaving) {
+        if (progressSaveProfile != null) {
+            progressSaveProfile.setVisibility(isSaving ? View.VISIBLE : View.GONE);
+        }
+        if (btnSaveProfile != null) {
+            btnSaveProfile.setEnabled(!isSaving);
+            btnSaveProfile.setText(isSaving ? "Saving..." : "Save");
+        }
+        if (btnCancelEdit != null) {
+            btnCancelEdit.setEnabled(!isSaving);
+        }
+        if (btnChangeProfileImage != null) {
+            btnChangeProfileImage.setEnabled(!isSaving);
+        }
     }
 
 

@@ -245,6 +245,12 @@ public class BrowseAssignmentsFragment extends Fragment {
         if (progressBar != null) {
             progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
         }
+        if (recyclerAssignments != null && show) {
+            recyclerAssignments.setVisibility(View.GONE);
+        }
+        if (tvNoData != null && show) {
+            tvNoData.setVisibility(View.GONE);
+        }
     }
 
     private void showNoData(boolean show) {

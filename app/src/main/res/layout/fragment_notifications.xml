@@ -35,6 +35,24 @@
             android:textAllCaps="false"
             style="@style/Widget.Material3.Button.TextButton" />
 
+        <ProgressBar
+            android:id="@+id/progressNotifications"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvNotificationsLoading"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Loading notifications..."
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/tvNotificationsEmpty"
             android:layout_width="match_parent"

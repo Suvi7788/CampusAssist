@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -68,6 +69,7 @@ public class AssignmentDetailsFragment extends Fragment {
     private MaterialButton btnEdit, btnDelete, btnSave, btnCancel;
     private MaterialButton btnBidForAssignment, btnStartWork, btnPickSubmissionFile, btnSubmitCompletedWork;
     private MaterialButton btnPayNow;
+    private ProgressBar progressAssignmentDetails;
     private TextInputEditText etSubmissionNotes;
     private LinearLayout completeWorkSection;
     private FirebaseFirestore firebaseFirestore;
@@ -178,6 +180,7 @@ public class AssignmentDetailsFragment extends Fragment {
         etSubmissionNotes = view.findViewById(R.id.etSubmissionNotes);
         completeWorkSection = view.findViewById(R.id.completeWorkSection);
         btnPayNow = view.findViewById(R.id.btnPayNow);
+        progressAssignmentDetails = view.findViewById(R.id.progressAssignmentDetails);
 
         bidWriterAdapter = new BidWriterAdapter(new BidWriterAdapter.BidActionListener() {
             @Override
@@ -259,6 +262,7 @@ public class AssignmentDetailsFragment extends Fragment {
         }
 
         applyRoleBasedUi();
+        fetchAssignmentDetails();
 
         // Handle attachment row click
         attachmentRow.setOnClickListener(v -> openAttachment());
@@ -330,6 +334,99 @@ public class AssignmentDetailsFragment extends Fragment {
             // Show Pay Now button only when payment is pending
             boolean isPendingPayment = "Pending Payment".equalsIgnoreCase(assignmentStatus);
             btnPayNow.setVisibility(isPendingPayment ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void fetchAssignmentDetails() {
+        if (TextUtils.isEmpty(assignmentId)) {
+            return;
+        }
+
+        setDetailsLoading(true);
+        firebaseFirestore.collection("Assignments").document(assignmentId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (!documentSnapshot.exists()) {
+                        setDetailsLoading(false);
+                        return;
+                    }
+
+                    lk.disontech.campusassist.model.AssignmentModel assignment =
+                            documentSnapshot.toObject(lk.disontech.campusassist.model.AssignmentModel.class);
+                    if (assignment != null) {
+                        bindAssignmentFromBackend(assignment);
+                        applyRoleBasedUi();
+                    }
+                    setDetailsLoading(false);
+                })
+                .addOnFailureListener(e -> {
+                    setDetailsLoading(false);
+                    Toast.makeText(getContext(), "Failed to load assignment details: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void bindAssignmentFromBackend(lk.disontech.campusassist.model.AssignmentModel assignment) {
+        assignmentStatus = safe(assignment.getStatus());
+        assignmentId = safe(assignment.getAssignmentId());
+        studentId = safe(assignment.getStudentId());
+        fileUrl = safe(assignment.getFileUrl());
+
+        String title = safe(assignment.getTitle());
+        String subject = safe(assignment.getSubject());
+        String deadline = safe(assignment.getDeadline());
+        String description = safe(assignment.getDescription());
+        String studentName = safe(assignment.getStudentName());
+        String fileName = safe(assignment.getFileName());
+
+        tvTitle.setText(title);
+        tvSubject.setText(subject);
+        tvDeadline.setText(deadline);
+        tvDescription.setText(description);
+        tvStudent.setText(studentName);
+
+        etTitle.setText(title);
+        actvSubject.setText(subject, false);
+        etDeadline.setText(deadline);
+        etDescription.setText(description);
+
+        currentFileName = fileName;
+        if (!TextUtils.isEmpty(fileName)) {
+            tvAttachmentName.setText(fileName);
+            etAttachmentName.setText(fileName);
+            attachmentRow.setVisibility(View.VISIBLE);
+        } else {
+            attachmentRow.setVisibility(View.GONE);
+            etAttachmentName.setText("No file selected");
+        }
+
+        if (!TextUtils.isEmpty(assignment.getSubmissionFileName())) {
+            tvSubmissionFileName.setText(assignment.getSubmissionFileName());
+        }
+        if (!TextUtils.isEmpty(assignment.getSubmissionNotes())) {
+            etSubmissionNotes.setText(assignment.getSubmissionNotes());
+        }
+    }
+
+    private void setDetailsLoading(boolean isLoading) {
+        if (progressAssignmentDetails != null) {
+            progressAssignmentDetails.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        if (btnEdit != null) {
+            btnEdit.setEnabled(!isLoading);
+        }
+        if (btnDelete != null) {
+            btnDelete.setEnabled(!isLoading);
+        }
+        if (btnBidForAssignment != null) {
+            btnBidForAssignment.setEnabled(!isLoading);
+        }
+        if (btnStartWork != null) {
+            btnStartWork.setEnabled(!isLoading);
+        }
+        if (btnSubmitCompletedWork != null) {
+            btnSubmitCompletedWork.setEnabled(!isLoading);
+        }
+        if (btnPayNow != null) {
+            btnPayNow.setEnabled(!isLoading);
         }
     }
 
@@ -589,10 +686,12 @@ public class AssignmentDetailsFragment extends Fragment {
     }
 
     private void loadBidsForAssignment() {
+        setDetailsLoading(true);
         if (assignmentId == null || assignmentId.isEmpty()) {
             tvNoBids.setVisibility(View.VISIBLE);
             recyclerBids.setVisibility(View.GONE);
             tvNoBids.setText("No bids available for this assignment");
+            setDetailsLoading(false);
             return;
         }
 
@@ -602,6 +701,7 @@ public class AssignmentDetailsFragment extends Fragment {
                 if (bids == null || bids.isEmpty()) {
                     tvNoBids.setVisibility(View.VISIBLE);
                     recyclerBids.setVisibility(View.GONE);
+                    setDetailsLoading(false);
                     return;
                 }
 
@@ -612,6 +712,7 @@ public class AssignmentDetailsFragment extends Fragment {
             public void onError(String errorMessage) {
                 tvNoBids.setVisibility(View.VISIBLE);
                 recyclerBids.setVisibility(View.GONE);
+                setDetailsLoading(false);
                 Toast.makeText(getContext(), "Error loading bids: " + errorMessage, Toast.LENGTH_SHORT).show();
             }
         });
@@ -636,6 +737,7 @@ public class AssignmentDetailsFragment extends Fragment {
                     tvNoBids.setVisibility(View.GONE);
                     recyclerBids.setVisibility(View.VISIBLE);
                     bidWriterAdapter.submitList(bids);
+                    setDetailsLoading(false);
                 }
             });
         }
@@ -1083,6 +1185,10 @@ public class AssignmentDetailsFragment extends Fragment {
     private void onPayNowClicked() {
         // TODO: Integrate payment gateway (e.g. PayHere via browser/Custom Tab)
         Toast.makeText(getContext(), "Payment flow coming soon!", Toast.LENGTH_SHORT).show();
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 
     private void sendNotification(String recipientUserId,

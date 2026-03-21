@@ -347,6 +347,14 @@
                                 style="@style/Widget.Material3.Button.UnelevatedButton" />
                         </LinearLayout>
 
+                        <ProgressBar
+                            android:id="@+id/progressSaveProfile"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_horizontal"
+                            android:layout_marginTop="8dp"
+                            android:visibility="gone" />
+
                     </LinearLayout>
 
                 </LinearLayout>

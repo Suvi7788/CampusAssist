@@ -1,9 +1,14 @@
 package lk.disontech.campusassist.activity;
 
+import android.animation.Animator;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Patterns;
 import android.view.View;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,6 +27,8 @@ public class LoginActivity extends AppCompatActivity {
     private ActivityLoginBinding binding;
     private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firebaseFirestore;
+    private ValueAnimator loginLoadingAnimator;
+    private boolean entryAnimationPlayed = false;
 
     private String selectedRole = "Student"; // default
 
@@ -66,8 +73,8 @@ public class LoginActivity extends AppCompatActivity {
             updateRoleUI(selectedRole);
         });
 
-        // Login button click
-        binding.btnLogin.setOnClickListener(v -> performLogin());
+        // Login button click with tactile animation
+        binding.btnLogin.setOnClickListener(v -> animateButtonPress(binding.btnLogin, this::performLogin));
 
         // Register link click
         binding.tvRegister.setOnClickListener(v -> {
@@ -75,6 +82,8 @@ public class LoginActivity extends AppCompatActivity {
             i.putExtra("role", selectedRole);
             startActivity(i);
         });
+
+        playEntryAnimation();
     }
 
     private void updateRoleUI(String role) {
@@ -111,6 +120,7 @@ public class LoginActivity extends AppCompatActivity {
         // Show progress
         binding.btnLogin.setEnabled(false);
         binding.btnLogin.setText("Logging in...");
+        startLoginLoadingAnimation();
 
         // Firebase Login
         firebaseAuth.signInWithEmailAndPassword(email, password)
@@ -131,6 +141,7 @@ public class LoginActivity extends AppCompatActivity {
                                         Intent intent = new Intent(LoginActivity.this, DashboardActivity.class);
                                         intent.putExtra("role", normalizedRole);
                                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                        stopLoginLoadingAnimation();
                                         startActivity(intent);
                                         finish();
                                     } else {
@@ -155,8 +166,87 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void resetButton() {
+        stopLoginLoadingAnimation();
         binding.btnLogin.setEnabled(true);
         binding.btnLogin.setText("Login");
+        binding.btnLogin.setAlpha(1f);
+        binding.btnLogin.setScaleX(1f);
+        binding.btnLogin.setScaleY(1f);
+    }
+
+    private void playEntryAnimation() {
+        if (entryAnimationPlayed) {
+            return;
+        }
+        entryAnimationPlayed = true;
+
+        View[] animatedViews = new View[]{
+                binding.logoCircle,
+                binding.tvTitle,
+                binding.tvSubTitle,
+                binding.loginCard
+        };
+
+        for (View view : animatedViews) {
+            view.setAlpha(0f);
+            view.setTranslationY(36f);
+        }
+
+        binding.getRoot().post(() -> {
+            AnimatorSet set = new AnimatorSet();
+            set.playTogether(
+                    createAppearAnimator(binding.logoCircle, 0L),
+                    createAppearAnimator(binding.tvTitle, 80L),
+                    createAppearAnimator(binding.tvSubTitle, 140L),
+                    createAppearAnimator(binding.loginCard, 220L)
+            );
+            set.start();
+        });
+    }
+
+    private Animator createAppearAnimator(View view, long startDelayMs) {
+        ObjectAnimator alpha = ObjectAnimator.ofFloat(view, View.ALPHA, 0f, 1f);
+        ObjectAnimator translate = ObjectAnimator.ofFloat(view, View.TRANSLATION_Y, 36f, 0f);
+        AnimatorSet set = new AnimatorSet();
+        set.playTogether(alpha, translate);
+        set.setStartDelay(startDelayMs);
+        set.setDuration(360L);
+        set.setInterpolator(new DecelerateInterpolator());
+        return set;
+    }
+
+    private void animateButtonPress(View button, Runnable action) {
+        if (!button.isEnabled()) {
+            return;
+        }
+        button.animate()
+                .scaleX(0.96f)
+                .scaleY(0.96f)
+                .setDuration(80L)
+                .withEndAction(() -> {
+                    button.animate().scaleX(1f).scaleY(1f).setDuration(80L).start();
+                    action.run();
+                })
+                .start();
+    }
+
+    private void startLoginLoadingAnimation() {
+        stopLoginLoadingAnimation();
+        loginLoadingAnimator = ValueAnimator.ofFloat(1f, 0.55f, 1f);
+        loginLoadingAnimator.setDuration(900L);
+        loginLoadingAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        loginLoadingAnimator.addUpdateListener(animation -> {
+            float value = (float) animation.getAnimatedValue();
+            binding.btnLogin.setAlpha(value);
+        });
+        loginLoadingAnimator.start();
+    }
+
+    private void stopLoginLoadingAnimation() {
+        if (loginLoadingAnimator != null) {
+            loginLoadingAnimator.cancel();
+            loginLoadingAnimator = null;
+        }
     }
 
     private String normalizeRole(String roleFromUserData, String fallbackRole) {
@@ -186,5 +276,11 @@ public class LoginActivity extends AppCompatActivity {
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
                         View.SYSTEM_UI_FLAG_FULLSCREEN |
                         View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+    }
+
+    @Override
+    protected void onDestroy() {
+        stopLoginLoadingAnimation();
+        super.onDestroy();
     }
 }

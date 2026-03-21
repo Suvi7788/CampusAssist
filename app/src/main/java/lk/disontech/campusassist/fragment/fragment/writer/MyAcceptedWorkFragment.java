@@ -8,6 +8,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -44,6 +46,9 @@ public class MyAcceptedWorkFragment extends Fragment {
     private RecyclerView recyclerAcceptedWork;
     private TextInputEditText etSearchMyWork;
     private MaterialAutoCompleteTextView actvStatusFilter;
+    private ProgressBar progressMyWork;
+    private TextView tvMyWorkLoading;
+    private TextView tvMyWorkEmpty;
     private AcceptedWorkAdapter acceptedWorkAdapter;
     private final List<AcceptedWorkModel> acceptedWorkList = new ArrayList<>();
     private final List<AcceptedWorkModel> fullWorkList = new ArrayList<>();
@@ -71,6 +76,9 @@ public class MyAcceptedWorkFragment extends Fragment {
         recyclerAcceptedWork = view.findViewById(R.id.recyclerAcceptedWork);
         etSearchMyWork = view.findViewById(R.id.etSearchMyWork);
         actvStatusFilter = view.findViewById(R.id.actvStatusFilter);
+        progressMyWork = view.findViewById(R.id.progressMyWork);
+        tvMyWorkLoading = view.findViewById(R.id.tvMyWorkLoading);
+        tvMyWorkEmpty = view.findViewById(R.id.tvMyWorkEmpty);
 
         firebaseAuth = FirebaseAuth.getInstance();
         firebaseFirestore = FirebaseFirestore.getInstance();
@@ -143,7 +151,11 @@ public class MyAcceptedWorkFragment extends Fragment {
         actvStatusFilter.setText(selectedStatusFilter, false);
         actvStatusFilter.setOnItemClickListener((parent, view, position, id) -> {
             selectedStatusFilter = statusFilterOptions.get(position);
-            applyFilters();
+            showLoadingState(true, "Applying filter...");
+            recyclerAcceptedWork.post(() -> {
+                applyFilters();
+                showLoadingState(false, "");
+            });
         });
 
         etSearchMyWork.addTextChangedListener(new TextWatcher() {
@@ -153,7 +165,11 @@ public class MyAcceptedWorkFragment extends Fragment {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                applyFilters();
+                showLoadingState(true, "Applying filter...");
+                recyclerAcceptedWork.post(() -> {
+                    applyFilters();
+                    showLoadingState(false, "");
+                });
             }
 
             @Override
@@ -180,6 +196,7 @@ public class MyAcceptedWorkFragment extends Fragment {
             return;
         }
 
+        showLoadingState(true, "Loading work...");
         String writerId = firebaseAuth.getCurrentUser().getUid();
         bidRepository.getBidsByWriter(writerId, new BidRepository.OnBidsLoadedCallback() {
             @Override
@@ -188,7 +205,8 @@ public class MyAcceptedWorkFragment extends Fragment {
                     fullWorkList.clear();
                     acceptedWorkList.clear();
                     acceptedWorkAdapter.notifyDataSetChanged();
-                    Toast.makeText(getContext(), "No bids found", Toast.LENGTH_SHORT).show();
+                    updateEmptyState();
+                    showLoadingState(false, "");
                     return;
                 }
 
@@ -197,6 +215,8 @@ public class MyAcceptedWorkFragment extends Fragment {
 
             @Override
             public void onError(String errorMessage) {
+                showLoadingState(false, "");
+                updateEmptyState();
                 Toast.makeText(getContext(), "Error loading bids: " + errorMessage, Toast.LENGTH_SHORT).show();
             }
         });
@@ -259,6 +279,7 @@ public class MyAcceptedWorkFragment extends Fragment {
         fullWorkList.addAll(items);
         refreshStatusFilterOptions();
         applyFilters();
+        showLoadingState(false, "");
     }
 
     private void refreshStatusFilterOptions() {
@@ -312,6 +333,29 @@ public class MyAcceptedWorkFragment extends Fragment {
         }
 
         acceptedWorkAdapter.notifyDataSetChanged();
+        updateEmptyState();
+    }
+
+    private void updateEmptyState() {
+        if (tvMyWorkEmpty != null) {
+            tvMyWorkEmpty.setVisibility(acceptedWorkList.isEmpty() ? View.VISIBLE : View.GONE);
+        }
+        if (recyclerAcceptedWork != null) {
+            recyclerAcceptedWork.setVisibility(acceptedWorkList.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    private void showLoadingState(boolean isLoading, String message) {
+        if (progressMyWork != null) {
+            progressMyWork.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        if (tvMyWorkLoading != null) {
+            tvMyWorkLoading.setText(message == null || message.isEmpty() ? "Loading..." : message);
+            tvMyWorkLoading.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        if (isLoading && tvMyWorkEmpty != null) {
+            tvMyWorkEmpty.setVisibility(View.GONE);
+        }
     }
 
     private void showCancelBidConfirmation(AcceptedWorkModel model) {

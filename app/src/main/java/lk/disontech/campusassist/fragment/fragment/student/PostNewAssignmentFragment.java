@@ -10,6 +10,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -43,6 +44,7 @@ public class PostNewAssignmentFragment extends Fragment {
     private MaterialAutoCompleteTextView actvSubject;
     private MaterialButton btnAttach, btnSubmit;
     private TextView tvAttachmentName;
+    private ProgressBar progressPostAssignment;
 
     private Uri selectedFileUri = null;
     private String selectedFileName = "";
@@ -92,6 +94,7 @@ public class PostNewAssignmentFragment extends Fragment {
         btnAttach = view.findViewById(R.id.btnAttach);
         btnSubmit = view.findViewById(R.id.btnSubmit);
         tvAttachmentName = view.findViewById(R.id.tvAttachmentName);
+        progressPostAssignment = view.findViewById(R.id.progressPostAssignment);
 
         // Back button
         topAppBar.setNavigationOnClickListener(v -> {
@@ -179,8 +182,7 @@ public class PostNewAssignmentFragment extends Fragment {
         // Get current user info
         String studentId = firebaseAuth.getCurrentUser().getUid();
 
-        // Disable submit button
-        btnSubmit.setEnabled(false);
+        setSubmitLoading(true);
 
         // Fetch user data from Firestore
         firebaseFirestore.collection("Users").document(studentId).get()
@@ -198,12 +200,12 @@ public class PostNewAssignmentFragment extends Fragment {
                             saveAssignmentToFirestore(studentId, studentName, studentEmail, title, subject, desc, deadline, "", "");
                         }
                     } else {
-                        btnSubmit.setEnabled(true);
+                        setSubmitLoading(false);
                         Toast.makeText(requireContext(), "User data not found!", Toast.LENGTH_SHORT).show();
                     }
                 })
                 .addOnFailureListener(e -> {
-                    btnSubmit.setEnabled(true);
+                    setSubmitLoading(false);
                     Toast.makeText(requireContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
@@ -227,13 +229,13 @@ public class PostNewAssignmentFragment extends Fragment {
                         saveAssignmentToFirestore(studentId, studentName, studentEmail, title, subject, desc, deadline, fileUrl, selectedFileName);
                     }).addOnFailureListener(e -> {
                         progressDialog.dismiss();
-                        btnSubmit.setEnabled(true);
+                        setSubmitLoading(false);
                         Toast.makeText(requireContext(), "Error getting file URL: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     });
                 })
                 .addOnFailureListener(e -> {
                     progressDialog.dismiss();
-                    btnSubmit.setEnabled(true);
+                    setSubmitLoading(false);
                     Toast.makeText(requireContext(), "Upload Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 })
                 .addOnProgressListener(snapshot -> {
@@ -269,6 +271,7 @@ public class PostNewAssignmentFragment extends Fragment {
         firebaseFirestore.collection("Assignments").document(assignmentId).set(assignment)
                 .addOnSuccessListener(aVoid -> {
                     progressDialog.dismiss();
+                    setSubmitLoading(false);
                     Toast.makeText(requireContext(), "Assignment Posted Successfully! ✅", Toast.LENGTH_SHORT).show();
 
                     // Clear form
@@ -279,7 +282,7 @@ public class PostNewAssignmentFragment extends Fragment {
                 })
                 .addOnFailureListener(e -> {
                     progressDialog.dismiss();
-                    btnSubmit.setEnabled(true);
+                    setSubmitLoading(false);
                     Toast.makeText(requireContext(), "Save Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
@@ -293,7 +296,7 @@ public class PostNewAssignmentFragment extends Fragment {
         selectedFileName = "";
         tvAttachmentName.setText("");
         tvAttachmentName.setVisibility(View.GONE);
-        btnSubmit.setEnabled(true);
+        setSubmitLoading(false);
     }
 
     private String getFileExtension(Uri uri) {
@@ -344,5 +347,18 @@ public class PostNewAssignmentFragment extends Fragment {
             }
         }
         return result;
+    }
+
+    private void setSubmitLoading(boolean isLoading) {
+        if (progressPostAssignment != null) {
+            progressPostAssignment.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        if (btnSubmit != null) {
+            btnSubmit.setEnabled(!isLoading);
+            btnSubmit.setText(isLoading ? "Saving..." : "Submit Assignment");
+        }
+        if (btnAttach != null) {
+            btnAttach.setEnabled(!isLoading);
+        }
     }
 }

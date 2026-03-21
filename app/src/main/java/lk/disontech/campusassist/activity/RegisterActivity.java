@@ -1,9 +1,14 @@
 package lk.disontech.campusassist.activity;
 
+import android.animation.Animator;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Patterns;
 import android.view.View;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
@@ -23,6 +28,8 @@ public class RegisterActivity extends AppCompatActivity {
     private ActivityRegisterBinding binding;
     private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firebaseFirestore;
+    private ValueAnimator registerLoadingAnimator;
+    private boolean entryAnimationPlayed = false;
 
     private String selectedUserType = "Student";
 
@@ -49,14 +56,16 @@ public class RegisterActivity extends AppCompatActivity {
 
         setupUserTypeDropdown();
 
-        // Register button click listener
-        binding.btnRegister.setOnClickListener(v -> onRegister());
+        // Register button click listener with tactile animation
+        binding.btnRegister.setOnClickListener(v -> animateButtonPress(binding.btnRegister, this::onRegister));
 
         // Login link click listener
         binding.tvLogin.setOnClickListener(v -> {
             startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
             finish();
         });
+
+        playEntryAnimation();
     }
 
     private void setupUserTypeDropdown() {
@@ -135,6 +144,7 @@ public class RegisterActivity extends AppCompatActivity {
         // Disable button and show progress
         binding.btnRegister.setEnabled(false);
         binding.btnRegister.setText("Registering...");
+        startRegisterLoadingAnimation();
 
         // Create user with Firebase Auth
         firebaseAuth.createUserWithEmailAndPassword(email, password)
@@ -162,6 +172,7 @@ public class RegisterActivity extends AppCompatActivity {
                                     // Navigate to LoginActivity
                                     Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
                                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                    stopRegisterLoadingAnimation();
                                     startActivity(intent);
                                     finish();
 
@@ -187,8 +198,87 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void resetButton() {
+        stopRegisterLoadingAnimation();
         binding.btnRegister.setEnabled(true);
         binding.btnRegister.setText("Register");
+        binding.btnRegister.setAlpha(1f);
+        binding.btnRegister.setScaleX(1f);
+        binding.btnRegister.setScaleY(1f);
+    }
+
+    private void playEntryAnimation() {
+        if (entryAnimationPlayed) {
+            return;
+        }
+        entryAnimationPlayed = true;
+
+        View[] animatedViews = new View[]{
+                binding.logoCircle,
+                binding.tvTitle,
+                binding.tvSubTitle,
+                binding.registerCard
+        };
+
+        for (View view : animatedViews) {
+            view.setAlpha(0f);
+            view.setTranslationY(36f);
+        }
+
+        binding.getRoot().post(() -> {
+            AnimatorSet set = new AnimatorSet();
+            set.playTogether(
+                    createAppearAnimator(binding.logoCircle, 0L),
+                    createAppearAnimator(binding.tvTitle, 80L),
+                    createAppearAnimator(binding.tvSubTitle, 140L),
+                    createAppearAnimator(binding.registerCard, 220L)
+            );
+            set.start();
+        });
+    }
+
+    private Animator createAppearAnimator(View view, long startDelayMs) {
+        ObjectAnimator alpha = ObjectAnimator.ofFloat(view, View.ALPHA, 0f, 1f);
+        ObjectAnimator translate = ObjectAnimator.ofFloat(view, View.TRANSLATION_Y, 36f, 0f);
+        AnimatorSet set = new AnimatorSet();
+        set.playTogether(alpha, translate);
+        set.setStartDelay(startDelayMs);
+        set.setDuration(360L);
+        set.setInterpolator(new DecelerateInterpolator());
+        return set;
+    }
+
+    private void animateButtonPress(View button, Runnable action) {
+        if (!button.isEnabled()) {
+            return;
+        }
+        button.animate()
+                .scaleX(0.96f)
+                .scaleY(0.96f)
+                .setDuration(80L)
+                .withEndAction(() -> {
+                    button.animate().scaleX(1f).scaleY(1f).setDuration(80L).start();
+                    action.run();
+                })
+                .start();
+    }
+
+    private void startRegisterLoadingAnimation() {
+        stopRegisterLoadingAnimation();
+        registerLoadingAnimator = ValueAnimator.ofFloat(1f, 0.55f, 1f);
+        registerLoadingAnimator.setDuration(900L);
+        registerLoadingAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        registerLoadingAnimator.addUpdateListener(animation -> {
+            float value = (float) animation.getAnimatedValue();
+            binding.btnRegister.setAlpha(value);
+        });
+        registerLoadingAnimator.start();
+    }
+
+    private void stopRegisterLoadingAnimation() {
+        if (registerLoadingAnimator != null) {
+            registerLoadingAnimator.cancel();
+            registerLoadingAnimator = null;
+        }
     }
 
     private String safeText(TextInputEditText editText) {
@@ -203,5 +293,11 @@ public class RegisterActivity extends AppCompatActivity {
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
                         View.SYSTEM_UI_FLAG_FULLSCREEN |
                         View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+    }
+
+    @Override
+    protected void onDestroy() {
+        stopRegisterLoadingAnimation();
+        super.onDestroy();
     }
 }
