@@ -12,7 +12,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 
+import java.text.NumberFormat;
 import java.util.List;
+import java.util.Locale;
 
 import lk.disontech.campusassist.R;
 import lk.disontech.campusassist.model.AcceptedWorkModel;
@@ -52,6 +54,7 @@ public class AcceptedWorkAdapter extends RecyclerView.Adapter<AcceptedWorkAdapte
         holder.tvSubject.setText(model.getSubject());
         holder.tvStudent.setText("Student: " + model.getStudentName());
         holder.tvDueDate.setText("Due: " + model.getDueDate());
+        holder.tvPrice.setText("Price: " + formatPrice(model.getPaymentAmount()));
         holder.tvStatus.setText(model.getStatus());
 
         if ("In Progress".equalsIgnoreCase(model.getStatus())) {
@@ -93,9 +96,17 @@ public class AcceptedWorkAdapter extends RecyclerView.Adapter<AcceptedWorkAdapte
         return acceptedWorkList.size();
     }
 
+    private String formatPrice(Double amount) {
+        double value = amount == null ? 0d : amount;
+        NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
+        numberFormat.setMinimumFractionDigits(2);
+        numberFormat.setMaximumFractionDigits(2);
+        return "LKR " + numberFormat.format(value);
+    }
+
     static class AcceptedWorkViewHolder extends RecyclerView.ViewHolder {
 
-        TextView tvTitle, tvStatus, tvSubject, tvStudent, tvDueDate;
+        TextView tvTitle, tvStatus, tvSubject, tvStudent, tvDueDate, tvPrice;
         MaterialButton btnViewUpdate, btnCancelBid;
 
         public AcceptedWorkViewHolder(@NonNull View itemView) {
@@ -106,6 +117,7 @@ public class AcceptedWorkAdapter extends RecyclerView.Adapter<AcceptedWorkAdapte
             tvSubject = itemView.findViewById(R.id.tvSubject);
             tvStudent = itemView.findViewById(R.id.tvStudent);
             tvDueDate = itemView.findViewById(R.id.tvDueDate);
+            tvPrice = itemView.findViewById(R.id.tvPrice);
             btnViewUpdate = itemView.findViewById(R.id.btnViewUpdate);
             btnCancelBid = itemView.findViewById(R.id.btnCancelBid);
         }

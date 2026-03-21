@@ -253,29 +253,29 @@ public class WriterSubmissionsFragment extends Fragment {
     }
 
     private String resolvePriceDisplay(DocumentSnapshot documentSnapshot) {
-        Object rawPrice = documentSnapshot.get("price");
+        Object rawPrice = documentSnapshot.get("paymentAmount");
         if (rawPrice == null) {
-            rawPrice = documentSnapshot.get("paymentAmount");
+            rawPrice = documentSnapshot.get("price");
         }
         if (rawPrice == null) {
             rawPrice = documentSnapshot.get("amount");
         }
 
+        double value = 0d;
         if (rawPrice instanceof Number) {
-            NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.getDefault());
-            numberFormat.setMinimumFractionDigits(2);
-            numberFormat.setMaximumFractionDigits(2);
-            return "LKR " + numberFormat.format(((Number) rawPrice).doubleValue());
-        }
-
-        if (rawPrice instanceof String) {
-            String price = ((String) rawPrice).trim();
-            if (!price.isEmpty()) {
-                return price;
+            value = ((Number) rawPrice).doubleValue();
+        } else if (rawPrice instanceof String) {
+            try {
+                value = Double.parseDouble(((String) rawPrice).trim());
+            } catch (NumberFormatException ignored) {
+                value = 0d;
             }
         }
 
-        return "Pending";
+        NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
+        numberFormat.setMinimumFractionDigits(2);
+        numberFormat.setMaximumFractionDigits(2);
+        return "LKR " + numberFormat.format(value);
     }
 
     private void updateEmptyState() {

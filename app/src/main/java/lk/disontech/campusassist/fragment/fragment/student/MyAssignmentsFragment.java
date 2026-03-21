@@ -26,6 +26,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -208,6 +209,7 @@ public class MyAssignmentsFragment extends Fragment {
         TextView tvSubject = card.findViewById(R.id.tvSubject);
         TextView tvStatus = card.findViewById(R.id.tvStatus);
         TextView tvDueDate = card.findViewById(R.id.tvDueDate);
+        TextView tvPrice = card.findViewById(R.id.tvPrice);
         TextView tvWriterName = card.findViewById(R.id.tvWriterName);
         LinearLayout layoutWriterSection = card.findViewById(R.id.layoutWriterSection);
         MaterialButton btnViewWriter = card.findViewById(R.id.btnViewWriter);
@@ -217,6 +219,7 @@ public class MyAssignmentsFragment extends Fragment {
         tvSubject.setText(subject);
         tvStatus.setText(safe(status));
         tvDueDate.setText("Due: " + (TextUtils.isEmpty(assignment.getDeadline()) ? "-" : assignment.getDeadline()));
+        tvPrice.setText("Price: " + formatPrice(assignment.getPaymentAmount()));
         applyStatusBadgeStyle(tvStatus, status);
 
         boolean shouldShowWriter = shouldShowWriterSection(status);
@@ -258,6 +261,16 @@ public class MyAssignmentsFragment extends Fragment {
                     b.putString("assignmentId", assignment.getAssignmentId());
                     b.putString("studentId", assignment.getStudentId());
                     b.putString("studentName", assignment.getStudentName());
+                    if (assignment.getPaymentAmount() != null) {
+                        b.putDouble("paymentAmount", assignment.getPaymentAmount());
+                    }
+                    if (assignment.getDeliveryLatitude() != null) {
+                        b.putDouble("deliveryLatitude", assignment.getDeliveryLatitude());
+                    }
+                    if (assignment.getDeliveryLongitude() != null) {
+                        b.putDouble("deliveryLongitude", assignment.getDeliveryLongitude());
+                    }
+                    b.putString("deliveryAddress", safe(assignment.getDeliveryAddress()));
 
                     AssignmentDetailsFragment fragment = new AssignmentDetailsFragment();
                     fragment.setArguments(b);
@@ -317,6 +330,14 @@ public class MyAssignmentsFragment extends Fragment {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private String formatPrice(Double amount) {
+        double value = amount == null ? 0d : amount;
+        NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
+        numberFormat.setMinimumFractionDigits(2);
+        numberFormat.setMaximumFractionDigits(2);
+        return "LKR " + numberFormat.format(value);
     }
 
     private void showLoadingState(boolean isLoading, String message) {

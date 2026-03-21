@@ -111,6 +111,9 @@ public class MyAcceptedWorkFragment extends Fragment {
                         b.putString("fileName", model.getFileName());
                         b.putString("assignmentId", model.getAssignmentId());
                         b.putString("studentId", model.getStudentId());
+                        if (model.getPaymentAmount() != null) {
+                            b.putDouble("paymentAmount", model.getPaymentAmount());
+                        }
                         b.putBoolean("isWriterView", true);
                         b.putBoolean("fromMyWork", true);
                         b.putString("writerWorkStatus", model.getStatus());
@@ -260,6 +263,7 @@ public class MyAcceptedWorkFragment extends Fragment {
                                     safe(assignment.getFileUrl()),
                                     safe(assignment.getFileName()),
                                     safe(assignment.getStudentId()),
+                                    assignment.getPaymentAmount(),
                                     !isRejected,
                                     canCancel
                             ));

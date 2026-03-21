@@ -15,6 +15,7 @@ public class AcceptedWorkModel {
     private final String fileUrl;
     private final String fileName;
     private final String studentId;
+    private final Double paymentAmount;
     private final boolean canOpenDetails;
     private final boolean canCancelBid;
 
@@ -31,6 +32,7 @@ public class AcceptedWorkModel {
                              String fileUrl,
                              String fileName,
                              String studentId,
+                             Double paymentAmount,
                              boolean canOpenDetails,
                              boolean canCancelBid) {
         this.bidId = bidId;
@@ -46,6 +48,7 @@ public class AcceptedWorkModel {
         this.fileUrl = fileUrl;
         this.fileName = fileName;
         this.studentId = studentId;
+        this.paymentAmount = paymentAmount;
         this.canOpenDetails = canOpenDetails;
         this.canCancelBid = canCancelBid;
     }
@@ -100,6 +103,10 @@ public class AcceptedWorkModel {
 
     public String getStudentId() {
         return studentId;
+    }
+
+    public Double getPaymentAmount() {
+        return paymentAmount;
     }
 
     public boolean canOpenDetails() {

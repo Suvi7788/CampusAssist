@@ -11,7 +11,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 
+import java.text.NumberFormat;
 import java.util.List;
+import java.util.Locale;
 
 import lk.disontech.campusassist.R;
 import lk.disontech.campusassist.model.AssignmentModel;
@@ -51,7 +53,7 @@ public class AssignmentAdapter extends RecyclerView.Adapter<AssignmentAdapter.As
         holder.tvTitle.setText(model.getTitle());
         holder.tvSubject.setText(model.getSubject());
         holder.tvDeadline.setText("Deadline: " + model.getDeadline());
-        holder.tvBudget.setText("Posted by: " + model.getStudentName());
+        holder.tvBudget.setText("Price: " + formatPrice(model.getPaymentAmount()));
 
         holder.btnAccept.setOnClickListener(v -> {
             if (listener != null) {
@@ -63,6 +65,14 @@ public class AssignmentAdapter extends RecyclerView.Adapter<AssignmentAdapter.As
     @Override
     public int getItemCount() {
         return assignmentList != null ? assignmentList.size() : 0;
+    }
+
+    private String formatPrice(Double amount) {
+        double value = amount == null ? 0d : amount;
+        NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
+        numberFormat.setMinimumFractionDigits(2);
+        numberFormat.setMaximumFractionDigits(2);
+        return "LKR " + numberFormat.format(value);
     }
 
     static class AssignmentViewHolder extends RecyclerView.ViewHolder {

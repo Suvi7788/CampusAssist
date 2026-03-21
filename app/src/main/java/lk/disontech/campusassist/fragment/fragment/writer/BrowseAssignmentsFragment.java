@@ -88,6 +88,16 @@ public class BrowseAssignmentsFragment extends Fragment {
             b.putString("fileName", model.getFileName());
             b.putString("assignmentId", model.getAssignmentId());
             b.putString("studentId", model.getStudentId());
+            if (model.getPaymentAmount() != null) {
+                b.putDouble("paymentAmount", model.getPaymentAmount());
+            }
+            if (model.getDeliveryLatitude() != null) {
+                b.putDouble("deliveryLatitude", model.getDeliveryLatitude());
+            }
+            if (model.getDeliveryLongitude() != null) {
+                b.putDouble("deliveryLongitude", model.getDeliveryLongitude());
+            }
+            b.putString("deliveryAddress", model.getDeliveryAddress());
             b.putString("status", "Accepted");
             b.putBoolean("isWriterView", true);
 
