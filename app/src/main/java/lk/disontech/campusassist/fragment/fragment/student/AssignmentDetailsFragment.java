@@ -1545,35 +1545,122 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             return;
         }
 
+        if (TextUtils.isEmpty(assignmentId)) {
+            Toast.makeText(getContext(), "Assignment reference is missing", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (paymentAmount == null || paymentAmount <= 0d) {
+            Toast.makeText(getContext(), "Invalid payment amount for this assignment", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (TextUtils.isEmpty(deliveryAddressText)) {
+            Toast.makeText(getContext(), "Assignment delivery address is missing", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        btnPayNow.setEnabled(false);
+        fetchCurrentUserPaymentData(new PaymentUserDataCallback() {
+            @Override
+            public void onLoaded(PaymentUserData userData) {
+                btnPayNow.setEnabled(true);
+                launchPayHerePayment(userData);
+            }
+
+            @Override
+            public void onError(String message) {
+                btnPayNow.setEnabled(true);
+                Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void fetchCurrentUserPaymentData(PaymentUserDataCallback callback) {
+        if (firebaseAuth.getCurrentUser() == null) {
+            callback.onError("Please login first");
+            return;
+        }
+
+        String userId = firebaseAuth.getCurrentUser().getUid();
+        String authEmail = safe(firebaseAuth.getCurrentUser().getEmail());
+        String authDisplayName = safe(firebaseAuth.getCurrentUser().getDisplayName());
+        String authPhone = safe(firebaseAuth.getCurrentUser().getPhoneNumber());
+
+        firebaseFirestore.collection("Users").document(userId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    String firstName = safe(documentSnapshot.getString("firstName"));
+                    String lastName = safe(documentSnapshot.getString("lastName"));
+                    String dbEmail = safe(documentSnapshot.getString("email"));
+                    String dbPhone = safe(documentSnapshot.getString("mobile"));
+
+                    String fullName = (firstName + " " + lastName).trim();
+                    if (TextUtils.isEmpty(fullName)) {
+                        fullName = authDisplayName;
+                    }
+                    if (TextUtils.isEmpty(fullName)) {
+                        fullName = "Student";
+                    }
+
+                    String resolvedEmail = !TextUtils.isEmpty(dbEmail) ? dbEmail : authEmail;
+                    if (TextUtils.isEmpty(resolvedEmail)) {
+                        callback.onError("Email not found. Please update your profile.");
+                        return;
+                    }
+
+                    String resolvedPhone = !TextUtils.isEmpty(dbPhone) ? dbPhone : authPhone;
+                    if (TextUtils.isEmpty(resolvedPhone)) {
+                        callback.onError("Phone number not found. Please update your profile.");
+                        return;
+                    }
+
+                    String[] nameParts = fullName.split("\\s+", 2);
+                    String resolvedFirstName = nameParts.length > 0 ? nameParts[0].trim() : "Student";
+                    String resolvedLastName = nameParts.length > 1 ? nameParts[1].trim() : "User";
+
+                    PaymentUserData userData = new PaymentUserData(
+                            resolvedFirstName,
+                            resolvedLastName,
+                            resolvedEmail,
+                            resolvedPhone
+                    );
+                    callback.onLoaded(userData);
+                })
+                .addOnFailureListener(e -> callback.onError("Failed to load user details: " + e.getMessage()));
+    }
+
+    private void launchPayHerePayment(PaymentUserData userData) {
         try {
             InitRequest payment = new InitRequest();
             payment.setSandBox(true);
             payment.setMerchantId(PAYHERE_SANDBOX_MERCHANT_ID);
             payment.setMerchantSecret(PAYHERE_SANDBOX_MERCHANT_SECRET);
             payment.setNotifyUrl("https://example.com/payhere/notify");
-            payment.setOrderId("ASSIGN-" + assignmentId + "-" + System.currentTimeMillis());
+            payment.setOrderId("ASSIGN-" + assignmentId);
             payment.setItemsDescription("Assignment payment - " + getAssignmentTitleText());
-            payment.setAmount(1000.00);
+            payment.setAmount(paymentAmount);
             payment.setCurrency("LKR");
 
             Customer customer = new Customer();
-            customer.setFirstName("Student");
-            customer.setLastName("User");
-            customer.setEmail(firebaseAuth.getCurrentUser() != null && firebaseAuth.getCurrentUser().getEmail() != null
-                    ? firebaseAuth.getCurrentUser().getEmail() : "student@example.com");
-            customer.setPhone("0770000000");
+            customer.setFirstName(userData.firstName);
+            customer.setLastName(userData.lastName);
+            customer.setEmail(userData.email);
+            customer.setPhone(userData.phone);
+
+            String city = resolveCityFromAddress(deliveryAddressText);
+            String country = resolveCountryFromAddress(deliveryAddressText);
 
             Address billingAddress = customer.getAddress();
             if (billingAddress != null) {
-                billingAddress.setAddress("No 1, Main Street");
-                billingAddress.setCity("Colombo");
-                billingAddress.setCountry("Sri Lanka");
+                billingAddress.setAddress(deliveryAddressText);
+                billingAddress.setCity(city);
+                billingAddress.setCountry(country);
             }
 
             Address deliveryAddress = new Address();
-            deliveryAddress.setAddress("No 1, Main Street");
-            deliveryAddress.setCity("Colombo");
-            deliveryAddress.setCountry("Sri Lanka");
+            deliveryAddress.setAddress(deliveryAddressText);
+            deliveryAddress.setCity(city);
+            deliveryAddress.setCountry(country);
             customer.setDeliveryAddress(deliveryAddress);
 
             payment.setCustomer(customer);
@@ -1583,6 +1670,48 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             payHereLauncher.launch(payHereIntent);
         } catch (Exception e) {
             Toast.makeText(getContext(), "Unable to open payment: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String resolveCityFromAddress(String address) {
+        if (TextUtils.isEmpty(address)) {
+            return "Colombo";
+        }
+
+        String[] parts = address.split(",");
+        if (parts.length >= 2 && !TextUtils.isEmpty(parts[1].trim())) {
+            return parts[1].trim();
+        }
+        if (!TextUtils.isEmpty(parts[0].trim())) {
+            return parts[0].trim();
+        }
+        return "Colombo";
+    }
+
+    private String resolveCountryFromAddress(String address) {
+        if (!TextUtils.isEmpty(address) && address.toLowerCase(Locale.US).contains("sri lanka")) {
+            return "Sri Lanka";
+        }
+        return "Sri Lanka";
+    }
+
+    private interface PaymentUserDataCallback {
+        void onLoaded(PaymentUserData userData);
+
+        void onError(String message);
+    }
+
+    private static class PaymentUserData {
+        final String firstName;
+        final String lastName;
+        final String email;
+        final String phone;
+
+        PaymentUserData(String firstName, String lastName, String email, String phone) {
+            this.firstName = firstName;
+            this.lastName = lastName;
+            this.email = email;
+            this.phone = phone;
         }
     }
 
