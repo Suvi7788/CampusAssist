@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.Locale;
@@ -29,6 +30,7 @@ public class LoginActivity extends AppCompatActivity {
     private FirebaseFirestore firebaseFirestore;
     private ValueAnimator loginLoadingAnimator;
     private boolean entryAnimationPlayed = false;
+    private boolean sessionRedirectInProgress = false;
 
     private String selectedRole = "Student"; // default
 
@@ -91,6 +93,33 @@ public class LoginActivity extends AppCompatActivity {
         binding.btnStudent.setSelected(isStudent);
         binding.btnWriter.setSelected(!isStudent);
         binding.tvRoleHint.setText(isStudent ? "Logging in as: Student" : "Logging in as: Writer");
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        redirectIfSessionExists();
+    }
+
+    private void redirectIfSessionExists() {
+        if (sessionRedirectInProgress) {
+            return;
+        }
+
+        FirebaseUser currentUser = firebaseAuth != null ? firebaseAuth.getCurrentUser() : null;
+        if (currentUser == null) {
+            return;
+        }
+
+        sessionRedirectInProgress = true;
+        firebaseFirestore.collection("Users")
+                .document(currentUser.getUid())
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    String userType = documentSnapshot != null ? documentSnapshot.getString("userType") : null;
+                    openDashboardAndClearTask(normalizeRole(userType, selectedRole));
+                })
+                .addOnFailureListener(e -> openDashboardAndClearTask("student"));
     }
 
     private void performLogin() {
@@ -266,6 +295,15 @@ public class LoginActivity extends AppCompatActivity {
             return "admin";
         }
         return "student";
+    }
+
+    private void openDashboardAndClearTask(String normalizedRole) {
+        Intent intent = new Intent(LoginActivity.this, DashboardActivity.class);
+        intent.putExtra("role", normalizedRole);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        stopLoginLoadingAnimation();
+        startActivity(intent);
+        finish();
     }
 
     @Override
