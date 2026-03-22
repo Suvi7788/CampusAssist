@@ -7,6 +7,8 @@ import android.content.ContentResolver;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
@@ -41,14 +43,17 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.auth.FirebaseAuth;
 
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -108,6 +113,8 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     private MaterialCardView deliveryMapCard;
     private TextView tvSubmittedFileNameStudent;
     private MaterialButton btnViewSubmittedFile;
+    private MaterialButton btnViewReceipt;
+    private MaterialButton btnDownloadReceipt;
     private TextView tvWriterNoteStudent;
     private TextView tvMapPreviewHint;
     private FirebaseFirestore firebaseFirestore;
@@ -154,6 +161,14 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     private ProgressDialog progressDialog;
     private final OkHttpClient httpClient = new OkHttpClient();
     private String currentOrderId = "";
+    private String receiptNumber = "";
+    private String receiptOrderId = "";
+    private String receiptTransactionId = "";
+    private String receiptWriterName = "";
+    private String receiptPaymentStatus = "";
+    private String receiptPaymentDateTime = "";
+    private String receiptCurrency = "LKR";
+    private Double receiptPaidAmount = null;
     private static final String PAYHERE_SANDBOX_MERCHANT_ID = "1226330";
     // Raw merchant secret exactly as shown in the PayHere sandbox dashboard
     private static final String PAYHERE_SANDBOX_MERCHANT_SECRET = "MTg4NjMxOTM2NTIwNzQ4NjMyNTAzNDkxNTAxNzc3Mzk2MDE2MTk4OA==";
@@ -189,15 +204,20 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
 
     private final ActivityResultLauncher<Intent> payHereLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == Activity.RESULT_OK) {
-                    Intent data = result.getData();
-                    int statusCode = (data != null)
-                            ? data.getIntExtra(PHConstants.INTENT_EXTRA_STATUS, -1)
-                            : -1;
-                    String payMessage = (data != null)
-                            ? data.getStringExtra(PHConstants.INTENT_EXTRA_MESSAGE)
-                            : null;
+                Intent data = result.getData();
+                int statusCode = (data != null)
+                        ? data.getIntExtra(PHConstants.INTENT_EXTRA_STATUS, -1)
+                        : -1;
+                String payMessage = (data != null)
+                        ? data.getStringExtra(PHConstants.INTENT_EXTRA_MESSAGE)
+                        : null;
 
+                Log.d("PAYHERE", "resultCode=" + result.getResultCode()
+                        + ", statusCode=" + statusCode
+                        + ", message=" + (payMessage == null ? "" : payMessage)
+                        + ", orderId=" + currentOrderId);
+
+                if (result.getResultCode() == Activity.RESULT_OK) {
                     // Do not trust popup success alone; verify with Merchant API first.
                     if (statusCode == 2 || statusCode == -1) {
                         verifyPaymentAndSave();
@@ -211,7 +231,56 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                                 Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    Toast.makeText(getContext(), "Payment cancelled.", Toast.LENGTH_SHORT).show();
+                    // Some devices/SDK paths return RESULT_CANCELED even when payment reaches gateway.
+                    if (!TextUtils.isEmpty(currentOrderId)) {
+                        Toast.makeText(getContext(),
+                                "Payment window closed. Checking payment status...",
+                                Toast.LENGTH_LONG).show();
+                        verifyPaymentAfterCloseFallback();
+                    } else {
+                        if (!TextUtils.isEmpty(payMessage)) {
+                            Toast.makeText(getContext(),
+                                    "Payment closed: " + payMessage,
+                                    Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(getContext(),
+                                    "Payment was cancelled or closed before completion.",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+            });
+
+    private void verifyPaymentAfterCloseFallback() {
+        btnPayNow.setEnabled(false);
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (isAdded()) {
+                verifyPaymentAndSave();
+            }
+        }, 1500L);
+    }
+
+    private final ActivityResultLauncher<Intent> receiptDownloadLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
+                    return;
+                }
+                Uri uri = result.getData().getData();
+                if (uri == null) {
+                    Toast.makeText(getContext(), "Unable to create receipt file", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                try (OutputStream outputStream = requireContext().getContentResolver().openOutputStream(uri)) {
+                    if (outputStream == null) {
+                        Toast.makeText(getContext(), "Unable to write receipt file", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    outputStream.write(buildReceiptText().getBytes());
+                    outputStream.flush();
+                    Toast.makeText(getContext(), "Receipt downloaded", Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(getContext(), "Failed to save receipt: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -292,6 +361,8 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         tvEditSelectedLocation = view.findViewById(R.id.tvEditSelectedLocation);
         tvSubmittedFileNameStudent = view.findViewById(R.id.tvSubmittedFileNameStudent);
         btnViewSubmittedFile = view.findViewById(R.id.btnViewSubmittedFile);
+        btnViewReceipt = view.findViewById(R.id.btnViewReceipt);
+        btnDownloadReceipt = view.findViewById(R.id.btnDownloadReceipt);
         tvWriterNoteStudent = view.findViewById(R.id.tvWriterNoteStudent);
         tvMapPreviewHint = view.findViewById(R.id.tvMapPreviewHint);
 
@@ -454,6 +525,12 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         btnSubmitCompletedWork.setOnClickListener(v -> submitCompletedWork());
         btnPayNow.setOnClickListener(v -> onPayNowClicked());
         btnOpenDeliveryMap.setOnClickListener(v -> openDeliveryLocationOnMap());
+        if (btnViewReceipt != null) {
+            btnViewReceipt.setOnClickListener(v -> showReceiptDialog());
+        }
+        if (btnDownloadReceipt != null) {
+            btnDownloadReceipt.setOnClickListener(v -> downloadReceipt());
+        }
 
         return view;
     }
@@ -504,6 +581,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             if (submittedWorkCard != null) {
                 submittedWorkCard.setVisibility(isCompleted ? View.VISIBLE : View.GONE);
             }
+            updateReceiptActionsVisibility(isCompleted);
 
             // Wire up the "View" button for submitted file
             if (btnViewSubmittedFile != null) {
@@ -529,6 +607,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                             documentSnapshot.toObject(lk.disontech.campusassist.model.AssignmentModel.class);
                     if (assignment != null) {
                         bindAssignmentFromBackend(assignment);
+                        bindReceiptFromDocument(documentSnapshot);
                         applyRoleBasedUi();
                     }
                     setDetailsLoading(false);
@@ -1659,7 +1738,25 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
 
     private void launchPayHerePayment(PaymentUserData userData) {
         try {
-            currentOrderId = "ASSIGN-" + assignmentId + "-" + System.currentTimeMillis();
+            String preflightError = validatePayHerePreflight(userData);
+            if (!TextUtils.isEmpty(preflightError)) {
+                Toast.makeText(getContext(), preflightError, Toast.LENGTH_LONG).show();
+                Log.e("PAYHERE", "Preflight failed: " + preflightError);
+                return;
+            }
+
+            String normalizedPhone = normalizePhoneForPayHere(userData.phone);
+            String normalizedEmail = userData.email == null ? "" : userData.email.trim();
+            String safeFirstName = userData.firstName == null ? "Student" : userData.firstName.trim();
+            String safeLastName = userData.lastName == null ? "User" : userData.lastName.trim();
+            if (TextUtils.isEmpty(safeFirstName)) {
+                safeFirstName = "Student";
+            }
+            if (TextUtils.isEmpty(safeLastName)) {
+                safeLastName = "User";
+            }
+
+            currentOrderId = buildCompactOrderId();
             InitRequest payment = new InitRequest();
             payment.setSandBox(true);
             payment.setMerchantId(PAYHERE_SANDBOX_MERCHANT_ID);
@@ -1667,32 +1764,37 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             payment.setNotifyUrl("https://example.com/payhere/notify");
             payment.setOrderId(currentOrderId);
             payment.setItemsDescription("Assignment payment - " + getAssignmentTitleText());
-            payment.setAmount(paymentAmount);
+            payment.setAmount(roundToTwoDecimals(paymentAmount));
             payment.setCurrency("LKR");
 
             Customer customer = new Customer();
-            customer.setFirstName(userData.firstName);
-            customer.setLastName(userData.lastName);
-            customer.setEmail(userData.email);
-            customer.setPhone(userData.phone);
+            customer.setFirstName(safeFirstName);
+            customer.setLastName(safeLastName);
+            customer.setEmail(normalizedEmail);
+            customer.setPhone(normalizedPhone);
 
             String city = resolveCityFromAddress(deliveryAddressText);
             String country = resolveCountryFromAddress(deliveryAddressText);
 
-            Address billingAddress = customer.getAddress();
+            Address billingAddress = new Address();
+            billingAddress = customer.getAddress();
             if (billingAddress != null) {
-                billingAddress.setAddress(deliveryAddressText);
+                billingAddress.setAddress(safeAddressForPayHere(deliveryAddressText));
                 billingAddress.setCity(city);
                 billingAddress.setCountry(country);
             }
 
             Address deliveryAddress = new Address();
-            deliveryAddress.setAddress(deliveryAddressText);
+            deliveryAddress.setAddress(safeAddressForPayHere(deliveryAddressText));
             deliveryAddress.setCity(city);
             deliveryAddress.setCountry(country);
             customer.setDeliveryAddress(deliveryAddress);
 
             payment.setCustomer(customer);
+
+            Log.d("PAYHERE", "Launching payment with orderId=" + currentOrderId
+                    + ", amount=" + paymentAmount
+                    + ", phone=" + normalizedPhone);
 
             Intent payHereIntent = new Intent(requireContext(), PHMainActivity.class);
             payHereIntent.putExtra(PHConstants.INTENT_EXTRA_DATA, payment);
@@ -1722,6 +1824,74 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             return "Sri Lanka";
         }
         return "Sri Lanka";
+    }
+
+    private String buildCompactOrderId() {
+        String cleanedAssignmentId = TextUtils.isEmpty(assignmentId)
+                ? "ASSIGN"
+                : assignmentId.replaceAll("[^A-Za-z0-9]", "");
+        if (cleanedAssignmentId.length() > 12) {
+            cleanedAssignmentId = cleanedAssignmentId.substring(0, 12);
+        }
+        return "ASSIGN-" + cleanedAssignmentId + "-" + (System.currentTimeMillis() / 1000L);
+    }
+
+    private String normalizePhoneForPayHere(String phone) {
+        if (TextUtils.isEmpty(phone)) {
+            return "";
+        }
+        String digits = phone.replaceAll("[^0-9]", "");
+        if (digits.length() == 9 && digits.startsWith("7")) {
+            digits = "0" + digits;
+        }
+        if (digits.startsWith("94") && digits.length() == 11) {
+            digits = "0" + digits.substring(2);
+        }
+        if (digits.length() != 10) {
+            return "";
+        }
+        if (!digits.startsWith("0")) {
+            return "";
+        }
+        return digits;
+    }
+
+    private String safeAddressForPayHere(String address) {
+        String safeAddress = TextUtils.isEmpty(address) ? "Colombo" : address.trim();
+        if (safeAddress.length() > 120) {
+            safeAddress = safeAddress.substring(0, 120);
+        }
+        return safeAddress;
+    }
+
+    private double roundToTwoDecimals(Double amount) {
+        if (amount == null) {
+            return 0d;
+        }
+        return Math.round(amount * 100.0d) / 100.0d;
+    }
+
+    private String validatePayHerePreflight(PaymentUserData userData) {
+        if (TextUtils.isEmpty(PAYHERE_SANDBOX_MERCHANT_ID) || TextUtils.isEmpty(PAYHERE_SANDBOX_MERCHANT_SECRET)) {
+            return "Merchant credentials are missing.";
+        }
+        if (userData == null) {
+            return "Unable to load payment profile.";
+        }
+        if (paymentAmount == null || paymentAmount <= 0d) {
+            return "Invalid payment amount.";
+        }
+        if (TextUtils.isEmpty(normalizePhoneForPayHere(userData.phone))) {
+            return "Please update your mobile as a valid Sri Lankan number (e.g., 0771234567).";
+        }
+        String email = userData.email == null ? "" : userData.email.trim();
+        if (TextUtils.isEmpty(email) || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            return "Please update a valid email in your profile.";
+        }
+        if (TextUtils.isEmpty(getAssignmentTitleText().trim())) {
+            return "Assignment title is missing for payment.";
+        }
+        return "";
     }
 
     private interface PaymentUserDataCallback {
@@ -1847,15 +2017,45 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                                 String statusStr = lastTransaction.optString("status", "");
 
                                 if (statusCode == 2 || statusStr.equalsIgnoreCase("RECEIVED")) {
+                                    String txnReference = firstNonEmpty(
+                                            lastTransaction.optString("payment_id", ""),
+                                            lastTransaction.optString("payment_no", ""),
+                                            lastTransaction.optString("reference", ""),
+                                            lastTransaction.optString("transaction_id", ""),
+                                            lastTransaction.optString("id", "")
+                                    );
+                                    String paidAt = firstNonEmpty(
+                                            lastTransaction.optString("captured_at", ""),
+                                            lastTransaction.optString("paid_at", ""),
+                                            lastTransaction.optString("updated_at", ""),
+                                            lastTransaction.optString("created_at", "")
+                                    );
+                                    double verifiedAmount = optDoubleOrDefault(
+                                            lastTransaction,
+                                            "amount",
+                                            paymentAmount != null ? paymentAmount : 0d
+                                    );
+                                    String currency = firstNonEmpty(lastTransaction.optString("currency", ""), "LKR");
+                                    VerifiedPaymentData verifiedPaymentData = new VerifiedPaymentData(
+                                            statusCode,
+                                            statusStr,
+                                            txnReference,
+                                            currentOrderId,
+                                            verifiedAmount,
+                                            currency,
+                                            paidAt,
+                                            jsonData
+                                    );
+
                                     requireActivity().runOnUiThread(() -> {
-                                        handlePaymentSuccess();
+                                        handlePaymentSuccess(verifiedPaymentData);
                                         btnPayNow.setEnabled(true);
                                     });
                                     return;
                                 }
                             }
                         }
-                        handleError("Payment not confirmed by PayHere Dashboard.");
+                        handleError("Payment verification failed. Payment is still pending.");
                     } catch (Exception e) {
                         Log.e("VERIFY", "Parsing Error: " + e.getMessage());
                         handleError("Verification parsing error.");
@@ -1874,7 +2074,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         });
     }
 
-    private void handlePaymentSuccess() {
+    private void handlePaymentSuccess(VerifiedPaymentData verifiedPaymentData) {
         if (TextUtils.isEmpty(assignmentId)) {
             Toast.makeText(getContext(), "Invalid assignment", Toast.LENGTH_SHORT).show();
             return;
@@ -1884,21 +2084,30 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         progressDialog.setMessage("Please wait...");
         progressDialog.show();
 
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("status", "Completed");
-        updates.put("paymentStatus", "Completed");
-        updates.put("paymentCompletedAt", System.currentTimeMillis());
-        updates.put("updatedAt", System.currentTimeMillis());
+        String writerId = !TextUtils.isEmpty(assignedWriterId) ? assignedWriterId : "";
+        resolveWriterNameForReceipt(writerId, writerName -> {
+            long verifiedAt = System.currentTimeMillis();
+            Map<String, Object> receiptMap = buildReceiptMap(verifiedPaymentData, writerName, verifiedAt);
 
-        firebaseFirestore.collection("Assignments").document(assignmentId)
-                .update(updates)
-                .addOnSuccessListener(unused -> {
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("status", "Completed");
+            updates.put("paymentStatus", "Paid");
+            updates.put("paymentCompletedAt", verifiedAt);
+            updates.put("paymentVerifiedAt", verifiedAt);
+            updates.put("paymentVerification", verifiedPaymentData.toMap());
+            updates.put("paymentReceipt", receiptMap);
+            updates.put("updatedAt", verifiedAt);
+
+            firebaseFirestore.collection("Assignments").document(assignmentId)
+                    .update(updates)
+                    .addOnSuccessListener(unused -> {
                     // Reload the assignment from Firestore to get latest submission details
                     firebaseFirestore.collection("Assignments").document(assignmentId).get()
                             .addOnSuccessListener(doc -> {
                                 progressDialog.dismiss();
 
                                 if (doc.exists()) {
+                                    bindReceiptFromDocument(doc);
                                     lk.disontech.campusassist.model.AssignmentModel assignment =
                                             doc.toObject(lk.disontech.campusassist.model.AssignmentModel.class);
                                     if (assignment != null) {
@@ -1968,12 +2177,13 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                                 if (submittedWorkCard != null) {
                                     submittedWorkCard.setVisibility(View.VISIBLE);
                                 }
+                                updateReceiptActionsVisibility(true);
                                 applyStudentEditDeleteState();
 
                                 // Show success dialog
                                 new AlertDialog.Builder(requireContext())
-                                        .setTitle("✅ Payment Successful")
-                                        .setMessage("Payment completed successfully.\n\nYour assignment is now complete. You can view and download the submitted work below.")
+                                        .setTitle("Payment Successful")
+                                        .setMessage("Payment was verified with PayHere and marked as paid. Your official receipt is now available.")
                                         .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
                                         .show();
                             })
@@ -1988,6 +2198,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                                 if (submittedWorkCard != null) {
                                     submittedWorkCard.setVisibility(View.VISIBLE);
                                 }
+                                updateReceiptActionsVisibility(true);
 
                                 // Notifications with cached IDs
                                 sendNotification(studentId, "student",
@@ -2006,13 +2217,14 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
 
                                 Toast.makeText(getContext(), "Payment completed successfully.", Toast.LENGTH_LONG).show();
                             });
-                })
-                .addOnFailureListener(e -> {
-                    progressDialog.dismiss();
-                    Toast.makeText(getContext(),
-                            "Payment recorded but failed to update status: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
-                });
+                    })
+                    .addOnFailureListener(e -> {
+                        progressDialog.dismiss();
+                        Toast.makeText(getContext(),
+                                "Payment verified but failed to update assignment: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    });
+        });
     }
 
     private void openSubmittedFile() {
@@ -2027,6 +2239,207 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         } catch (Exception e) {
             Toast.makeText(getContext(), "Error opening file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void bindReceiptFromDocument(DocumentSnapshot documentSnapshot) {
+        if (documentSnapshot == null || !documentSnapshot.exists()) {
+            clearReceiptData();
+            return;
+        }
+
+        Object receiptObj = documentSnapshot.get("paymentReceipt");
+        if (!(receiptObj instanceof Map)) {
+            clearReceiptData();
+            return;
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> receipt = (Map<String, Object>) receiptObj;
+        receiptNumber = safeObject(receipt.get("receiptNumber"));
+        receiptOrderId = safeObject(receipt.get("orderId"));
+        receiptTransactionId = safeObject(receipt.get("transactionId"));
+        receiptWriterName = safeObject(receipt.get("writerName"));
+        receiptPaymentStatus = safeObject(receipt.get("paymentStatus"));
+        receiptPaymentDateTime = safeObject(receipt.get("paymentDateTime"));
+        receiptCurrency = safeObject(receipt.get("currency"));
+        if (TextUtils.isEmpty(receiptCurrency)) {
+            receiptCurrency = "LKR";
+        }
+        receiptPaidAmount = objectToDouble(receipt.get("paidAmount"));
+    }
+
+    private Map<String, Object> buildReceiptMap(VerifiedPaymentData verifiedPaymentData, String writerName, long verifiedAt) {
+        Map<String, Object> receipt = new HashMap<>();
+        String generatedReceiptNumber = "RCP-" + assignmentId + "-" + verifiedAt;
+
+        receipt.put("receiptNumber", generatedReceiptNumber);
+        receipt.put("assignmentId", assignmentId);
+        receipt.put("orderId", verifiedPaymentData.orderId);
+        receipt.put("transactionId", verifiedPaymentData.transactionReference);
+        receipt.put("studentName", getStudentNameText());
+        receipt.put("writerName", TextUtils.isEmpty(writerName) ? "Writer" : writerName);
+        receipt.put("assignmentTitle", getAssignmentTitleText());
+        receipt.put("paidAmount", verifiedPaymentData.amount);
+        receipt.put("currency", TextUtils.isEmpty(verifiedPaymentData.currency) ? "LKR" : verifiedPaymentData.currency);
+        receipt.put("paymentDateTime", formatTimestamp(verifiedAt));
+        receipt.put("paymentDateTimestamp", verifiedAt);
+        receipt.put("paymentStatus", "Paid");
+
+        receiptNumber = generatedReceiptNumber;
+        receiptOrderId = verifiedPaymentData.orderId;
+        receiptTransactionId = verifiedPaymentData.transactionReference;
+        receiptWriterName = TextUtils.isEmpty(writerName) ? "Writer" : writerName;
+        receiptPaymentStatus = "Paid";
+        receiptPaymentDateTime = formatTimestamp(verifiedAt);
+        receiptCurrency = TextUtils.isEmpty(verifiedPaymentData.currency) ? "LKR" : verifiedPaymentData.currency;
+        receiptPaidAmount = verifiedPaymentData.amount;
+
+        return receipt;
+    }
+
+    private void resolveWriterNameForReceipt(String writerId, WriterNameCallback callback) {
+        if (callback == null) {
+            return;
+        }
+        if (TextUtils.isEmpty(writerId)) {
+            callback.onResolved("Writer");
+            return;
+        }
+
+        firebaseFirestore.collection("Users").document(writerId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    String firstName = safe(documentSnapshot.getString("firstName"));
+                    String lastName = safe(documentSnapshot.getString("lastName"));
+                    String fullName = (firstName + " " + lastName).trim();
+                    if (TextUtils.isEmpty(fullName)) {
+                        fullName = safe(documentSnapshot.getString("email"));
+                    }
+                    callback.onResolved(TextUtils.isEmpty(fullName) ? "Writer" : fullName);
+                })
+                .addOnFailureListener(e -> callback.onResolved("Writer"));
+    }
+
+    private void updateReceiptActionsVisibility(boolean isCompleted) {
+        int visibility = (isCompleted && hasReceiptData()) ? View.VISIBLE : View.GONE;
+        if (btnViewReceipt != null) {
+            btnViewReceipt.setVisibility(visibility);
+        }
+        if (btnDownloadReceipt != null) {
+            btnDownloadReceipt.setVisibility(visibility);
+        }
+    }
+
+    private boolean hasReceiptData() {
+        return !TextUtils.isEmpty(receiptNumber)
+                && !TextUtils.isEmpty(receiptOrderId)
+                && !TextUtils.isEmpty(receiptTransactionId);
+    }
+
+    private void showReceiptDialog() {
+        if (!hasReceiptData()) {
+            Toast.makeText(getContext(), "Receipt is not available yet", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Official Payment Receipt")
+                .setMessage(buildReceiptText())
+                .setPositiveButton("Close", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
+    private void downloadReceipt() {
+        if (!hasReceiptData()) {
+            Toast.makeText(getContext(), "Receipt is not available yet", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TITLE, "Receipt_" + receiptNumber + ".txt");
+        receiptDownloadLauncher.launch(intent);
+    }
+
+    private String buildReceiptText() {
+        String amountText = receiptPaidAmount != null
+                ? String.format(Locale.US, "%s %,.2f", TextUtils.isEmpty(receiptCurrency) ? "LKR" : receiptCurrency, receiptPaidAmount)
+                : "N/A";
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("Official Payment Receipt\n");
+        builder.append("Receipt Number: ").append(safeDisplay(receiptNumber)).append("\n");
+        builder.append("Assignment ID: ").append(safeDisplay(assignmentId)).append("\n");
+        builder.append("Order ID: ").append(safeDisplay(receiptOrderId)).append("\n");
+        builder.append("Transaction Reference ID: ").append(safeDisplay(receiptTransactionId)).append("\n");
+        builder.append("Student Name: ").append(getStudentNameText()).append("\n");
+        builder.append("Writer Name: ").append(safeDisplay(receiptWriterName)).append("\n");
+        builder.append("Assignment Title: ").append(getAssignmentTitleText()).append("\n");
+        builder.append("Paid Amount: ").append(amountText).append("\n");
+        builder.append("Payment Date/Time: ").append(safeDisplay(receiptPaymentDateTime)).append("\n");
+        builder.append("Payment Status: ").append(safeDisplay(receiptPaymentStatus));
+        return builder.toString();
+    }
+
+    private String safeDisplay(String value) {
+        return TextUtils.isEmpty(value) ? "N/A" : value;
+    }
+
+    private void clearReceiptData() {
+        receiptNumber = "";
+        receiptOrderId = "";
+        receiptTransactionId = "";
+        receiptWriterName = "";
+        receiptPaymentStatus = "";
+        receiptPaymentDateTime = "";
+        receiptCurrency = "LKR";
+        receiptPaidAmount = null;
+    }
+
+    private String safeObject(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private Double objectToDouble(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private String formatTimestamp(long timestamp) {
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(timestamp));
+    }
+
+    private String firstNonEmpty(String... values) {
+        if (values == null) {
+            return "";
+        }
+        for (String value : values) {
+            if (!TextUtils.isEmpty(value)) {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    private double optDoubleOrDefault(JSONObject jsonObject, String key, double fallback) {
+        if (jsonObject == null || TextUtils.isEmpty(key)) {
+            return fallback;
+        }
+        try {
+            if (jsonObject.has(key)) {
+                return jsonObject.optDouble(key, fallback);
+            }
+        } catch (Exception ignored) {
+        }
+        return fallback;
     }
 
     private void openDeliveryLocationOnMap() {
@@ -2073,6 +2486,52 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private interface WriterNameCallback {
+        void onResolved(String writerName);
+    }
+
+    private static class VerifiedPaymentData {
+        final int statusCode;
+        final String status;
+        final String transactionReference;
+        final String orderId;
+        final double amount;
+        final String currency;
+        final String paidAt;
+        final String rawResponse;
+
+        VerifiedPaymentData(int statusCode,
+                            String status,
+                            String transactionReference,
+                            String orderId,
+                            double amount,
+                            String currency,
+                            String paidAt,
+                            String rawResponse) {
+            this.statusCode = statusCode;
+            this.status = status;
+            this.transactionReference = transactionReference;
+            this.orderId = orderId;
+            this.amount = amount;
+            this.currency = currency;
+            this.paidAt = paidAt;
+            this.rawResponse = rawResponse;
+        }
+
+        Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("statusCode", statusCode);
+            map.put("status", status);
+            map.put("transactionReference", transactionReference);
+            map.put("orderId", orderId);
+            map.put("amount", amount);
+            map.put("currency", currency);
+            map.put("paidAt", paidAt);
+            map.put("rawResponse", rawResponse);
+            return map;
+        }
     }
 
     private void sendNotification(String recipientUserId,
