@@ -18,6 +18,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.text.InputType;
 import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -34,6 +35,9 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -57,6 +61,9 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.EmailAuthProvider;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.io.OutputStream;
 import java.io.ByteArrayOutputStream;
@@ -72,6 +79,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.io.IOException;
+import java.util.concurrent.Executor;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -186,6 +194,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     private String receiptPaymentDateTime = "";
     private String receiptCurrency = "LKR";
     private Double receiptPaidAmount = null;
+    private boolean payNowAuthInProgress = false;
     private static final String PAYHERE_SANDBOX_MERCHANT_ID = "1226330";
     // Raw merchant secret exactly as shown in the PayHere sandbox dashboard
     private static final String PAYHERE_SANDBOX_MERCHANT_SECRET = "MTg4NjMxOTM2NTIwNzQ4NjMyNTAzNDkxNTAxNzc3Mzk2MDE2MTk4OA==";
@@ -2152,6 +2161,139 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             return;
         }
 
+        startPayNowAuthenticationGate();
+    }
+
+    private void startPayNowAuthenticationGate() {
+        if (payNowAuthInProgress) {
+            return;
+        }
+
+        payNowAuthInProgress = true;
+        btnPayNow.setEnabled(false);
+
+        int canAuthenticate = BiometricManager.from(requireContext())
+                .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG);
+
+        if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
+            showBiometricPromptForPayment();
+            return;
+        }
+
+        showPasswordFallbackDialog();
+    }
+
+    private void showBiometricPromptForPayment() {
+        Executor executor = ContextCompat.getMainExecutor(requireContext());
+        BiometricPrompt biometricPrompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                if (!isAdded()) {
+                    return;
+                }
+                proceedToPayHereAfterAuth();
+            }
+
+            @Override
+            public void onAuthenticationFailed() {
+                if (!isAdded()) {
+                    return;
+                }
+                Toast.makeText(getContext(), "Biometric authentication failed.", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                if (!isAdded()) {
+                    return;
+                }
+                payNowAuthInProgress = false;
+                btnPayNow.setEnabled(true);
+                Toast.makeText(getContext(), "Authentication cancelled.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Confirm Payment")
+                .setSubtitle("Use biometric authentication to continue")
+                .setNegativeButtonText("Cancel")
+                .build();
+
+        biometricPrompt.authenticate(promptInfo);
+    }
+
+    private void showPasswordFallbackDialog() {
+        if (!isAdded()) {
+            payNowAuthInProgress = false;
+            return;
+        }
+
+        final TextInputEditText passwordInput = new TextInputEditText(requireContext());
+        passwordInput.setHint("Enter your login password");
+        passwordInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle("Confirm Password")
+                .setMessage("Biometric authentication is unavailable. Enter your account password to continue payment.")
+                .setView(passwordInput)
+                .setCancelable(false)
+                .setPositiveButton("Confirm", null)
+                .setNegativeButton("Cancel", (d, which) -> {
+                    payNowAuthInProgress = false;
+                    btnPayNow.setEnabled(true);
+                })
+                .create();
+
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String password = passwordInput.getText() == null ? "" : passwordInput.getText().toString();
+            if (TextUtils.isEmpty(password)) {
+                passwordInput.setError("Password is required");
+                return;
+            }
+            dialog.dismiss();
+            reauthenticateForPayment(password);
+        }));
+
+        dialog.show();
+    }
+
+    private void reauthenticateForPayment(String password) {
+        FirebaseUser user = firebaseAuth.getCurrentUser();
+        if (user == null) {
+            payNowAuthInProgress = false;
+            btnPayNow.setEnabled(true);
+            Toast.makeText(getContext(), "Please login first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String email = user.getEmail();
+        if (TextUtils.isEmpty(email)) {
+            payNowAuthInProgress = false;
+            btnPayNow.setEnabled(true);
+            Toast.makeText(getContext(), "Password confirmation is not available for this account.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        AuthCredential credential = EmailAuthProvider.getCredential(email, password);
+        user.reauthenticate(credential)
+                .addOnSuccessListener(unused -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    proceedToPayHereAfterAuth();
+                })
+                .addOnFailureListener(e -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    payNowAuthInProgress = false;
+                    btnPayNow.setEnabled(true);
+                    Toast.makeText(getContext(), "Incorrect password. Payment not started.", Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void proceedToPayHereAfterAuth() {
+        payNowAuthInProgress = false;
         btnPayNow.setEnabled(false);
         fetchCurrentUserPaymentData(new PaymentUserDataCallback() {
             @Override
