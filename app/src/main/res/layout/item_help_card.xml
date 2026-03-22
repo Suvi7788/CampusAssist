@@ -17,12 +17,13 @@
         android:gravity="center_vertical">
 
         <!-- Icon circle -->
-        <com.google.android.material.imageview.ShapeableImageView
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/iconCircle"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/colorPrimary"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+            app:cardBackgroundColor="?attr/colorPrimary"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp" />
 
         <ImageView
             android:id="@+id/imgIcon"

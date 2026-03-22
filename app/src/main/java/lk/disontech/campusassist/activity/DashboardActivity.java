@@ -152,6 +152,8 @@ public class DashboardActivity extends AppCompatActivity
                 openEarnings();
             } else if (id == R.id.nav_notifications) {
                 openNotifications();
+            } else if (id == R.id.nav_help) {
+                openHelpGuidelines();
             } else if (id == R.id.nav_logout) {
                 logoutUser();
             }
@@ -248,7 +250,11 @@ public class DashboardActivity extends AppCompatActivity
 
     @Override
     public void openHelpGuidelines() {
-        openFragment(new HelpGuidelinesFragment());
+        HelpGuidelinesFragment fragment = new HelpGuidelinesFragment();
+        Bundle bundle = new Bundle();
+        bundle.putString(HelpGuidelinesFragment.ARG_ROLE, role);
+        fragment.setArguments(bundle);
+        openFragment(fragment);
     }
 
     @Override
