@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Base64;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -52,6 +54,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.io.IOException;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.FormBody;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 import lk.disontech.campusassist.R;
 import lk.disontech.campusassist.adapter.BidWriterAdapter;
@@ -137,8 +152,21 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     private boolean isWriterView = false;
     private boolean fromMyWork = false;
     private ProgressDialog progressDialog;
+    private final OkHttpClient httpClient = new OkHttpClient();
+    private String currentOrderId = "";
     private static final String PAYHERE_SANDBOX_MERCHANT_ID = "1226330";
+    // Raw merchant secret exactly as shown in the PayHere sandbox dashboard
     private static final String PAYHERE_SANDBOX_MERCHANT_SECRET = "MTg4NjMxOTM2NTIwNzQ4NjMyNTAzNDkxNTAxNzc3Mzk2MDE2MTk4OA==";
+
+    // -----------------------------------------------------------------------
+    // IMPORTANT: These are NOT the same as the Merchant ID / Merchant Secret.
+    // You must create a "Business App" in your PayHere Sandbox portal:
+    //   https://sandbox.payhere.lk/merchant/  →  Business Apps  →  Create App
+    // Then paste the generated App ID and App Secret below.
+    // Using the Merchant ID here causes a 401 Unauthorized error.
+    // -----------------------------------------------------------------------
+    private static final String PAYHERE_BUSINESS_APP_CLIENT_ID = "4OVybzZnikK4JEVNu2WAJJ3D5";        // <-- replace
+    private static final String PAYHERE_BUSINESS_APP_CLIENT_SECRET = "4TttECjc5jQ4qAYIiuqOzk4Dx5u6V1QwS8m4N02gByqc"; // <-- replace
 
     private final ActivityResultLauncher<String> filePickerLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -170,9 +198,9 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                             ? data.getStringExtra(PHConstants.INTENT_EXTRA_MESSAGE)
                             : null;
 
-                    // Status 2 = Authorized/Completed; -1 means no explicit status (treat as success)
+                    // Do not trust popup success alone; verify with Merchant API first.
                     if (statusCode == 2 || statusCode == -1) {
-                        handlePaymentSuccess();
+                        verifyPaymentAndSave();
                     } else if (statusCode == 1) {
                         Toast.makeText(getContext(),
                                 "Payment is pending confirmation." + (payMessage != null ? " " + payMessage : ""),
@@ -1631,12 +1659,13 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
 
     private void launchPayHerePayment(PaymentUserData userData) {
         try {
+            currentOrderId = "ASSIGN-" + assignmentId + "-" + System.currentTimeMillis();
             InitRequest payment = new InitRequest();
             payment.setSandBox(true);
             payment.setMerchantId(PAYHERE_SANDBOX_MERCHANT_ID);
             payment.setMerchantSecret(PAYHERE_SANDBOX_MERCHANT_SECRET);
             payment.setNotifyUrl("https://example.com/payhere/notify");
-            payment.setOrderId("ASSIGN-" + assignmentId);
+            payment.setOrderId(currentOrderId);
             payment.setItemsDescription("Assignment payment - " + getAssignmentTitleText());
             payment.setAmount(paymentAmount);
             payment.setCurrency("LKR");
@@ -1713,6 +1742,136 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             this.email = email;
             this.phone = phone;
         }
+    }
+
+    // Merchant API verification flow (same pattern as your friend's implementation)
+    private void verifyPaymentAndSave() {
+        btnPayNow.setEnabled(false);
+
+        if (TextUtils.isEmpty(PAYHERE_BUSINESS_APP_CLIENT_ID)
+                || TextUtils.isEmpty(PAYHERE_BUSINESS_APP_CLIENT_SECRET)
+                || PAYHERE_BUSINESS_APP_CLIENT_ID.startsWith("YOUR_")
+                || PAYHERE_BUSINESS_APP_CLIENT_SECRET.startsWith("YOUR_")) {
+            handleError("Business App credentials are not configured.\n"
+                    + "Go to PayHere Sandbox portal → Business Apps → Create App,\n"
+                    + "then update PAYHERE_BUSINESS_APP_CLIENT_ID and PAYHERE_BUSINESS_APP_CLIENT_SECRET.");
+            return;
+        }
+
+        if (TextUtils.isEmpty(currentOrderId)) {
+            handleError("Payment reference is missing. Please try again.");
+            return;
+        }
+
+        Toast.makeText(requireContext(), "Payment submitted. Verifying payment...", Toast.LENGTH_LONG).show();
+
+        String authString = PAYHERE_BUSINESS_APP_CLIENT_ID + ":" + PAYHERE_BUSINESS_APP_CLIENT_SECRET;
+        String authBase64 = Base64.encodeToString(authString.getBytes(), Base64.NO_WRAP);
+
+        RequestBody tokenBody = new FormBody.Builder()
+                .add("grant_type", "client_credentials")
+                .build();
+
+        Request tokenRequest = new Request.Builder()
+                .url("https://sandbox.payhere.lk/merchant/v1/oauth/token")
+                .header("Authorization", "Basic " + authBase64)
+                .post(tokenBody)
+                .build();
+
+        httpClient.newCall(tokenRequest).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                handleError("Authorization failed. Connection error.");
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String jsonToken = response.body() != null ? response.body().string() : "";
+                if (response.isSuccessful()) {
+                    try {
+                        JSONObject obj = new JSONObject(jsonToken);
+                        String accessToken = obj.optString("access_token", "");
+                        if (TextUtils.isEmpty(accessToken)) {
+                            handleError("Error parsing auth token.");
+                            return;
+                        }
+
+                        // STEP 2: Call Search API with generated token
+                        searchPayment(accessToken);
+
+                    } catch (Exception e) {
+                        handleError("Error parsing auth token.");
+                    }
+                } else {
+                    Log.e("VERIFY", "Token Error (" + response.code() + "): " + jsonToken);
+                    handleError("Merchant authentication failed (HTTP " + response.code() + ").\n"
+                            + "Check that PAYHERE_BUSINESS_APP_CLIENT_ID and "
+                            + "PAYHERE_BUSINESS_APP_CLIENT_SECRET match your Business App in PayHere portal.");
+                }
+            }
+        });
+    }
+
+    private void searchPayment(String accessToken) {
+        HttpUrl url = HttpUrl.parse("https://sandbox.payhere.lk/merchant/v1/payment/search")
+                .newBuilder()
+                .addQueryParameter("order_id", currentOrderId)
+                .build();
+
+        Request searchRequest = new Request.Builder()
+                .url(url)
+                .header("Authorization", "Bearer " + accessToken)
+                .get()
+                .build();
+
+        httpClient.newCall(searchRequest).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                handleError("Verification search failed.");
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                String jsonData = response.body() != null ? response.body().string() : "";
+                Log.d("VERIFY", "Search Result: " + jsonData);
+
+                if (response.isSuccessful()) {
+                    try {
+                        JSONObject jsonObject = new JSONObject(jsonData);
+                        if (jsonObject.optInt("status", 0) == 1) {
+                            JSONArray dataArray = jsonObject.optJSONArray("data");
+                            if (dataArray != null && dataArray.length() > 0) {
+                                JSONObject lastTransaction = dataArray.getJSONObject(0);
+
+                                int statusCode = lastTransaction.optInt("status_code", -1);
+                                String statusStr = lastTransaction.optString("status", "");
+
+                                if (statusCode == 2 || statusStr.equalsIgnoreCase("RECEIVED")) {
+                                    requireActivity().runOnUiThread(() -> {
+                                        handlePaymentSuccess();
+                                        btnPayNow.setEnabled(true);
+                                    });
+                                    return;
+                                }
+                            }
+                        }
+                        handleError("Payment not confirmed by PayHere Dashboard.");
+                    } catch (Exception e) {
+                        Log.e("VERIFY", "Parsing Error: " + e.getMessage());
+                        handleError("Verification parsing error.");
+                    }
+                } else {
+                    handleError("Search API Server Error: " + response.code());
+                }
+            }
+        });
+    }
+
+    private void handleError(String message) {
+        requireActivity().runOnUiThread(() -> {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+            btnPayNow.setEnabled(true);
+        });
     }
 
     private void handlePaymentSuccess() {
