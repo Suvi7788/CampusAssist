@@ -5,7 +5,12 @@ import android.app.DatePickerDialog;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
@@ -146,6 +151,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     private Uri submissionFileUri = null;
     private String submissionFileName = "";
     private String assignedWriterId = "";
+    private String assignedWriterName = "";
     private String submissionFileUrlForStudent = "";
     private Double paymentAmount = null;
     private String deliveryAddressText = "";
@@ -297,8 +303,17 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             return;
         }
 
+        ensureReceiptDisplayFieldsReady(this::openReceiptPdfFromCurrentData);
+    }
+
+    private void openReceiptPdfFromCurrentData() {
+        if (!isAdded()) {
+            return;
+        }
+
         try {
-            File receiptFile = new File(requireContext().getCacheDir(), "Receipt_" + receiptNumber + ".pdf");
+            // Use a unique cache file to avoid external viewer reusing stale content by URI/path.
+            File receiptFile = new File(requireContext().getCacheDir(), buildReceiptCacheFileName());
             try (FileOutputStream fileOutputStream = new FileOutputStream(receiptFile)) {
                 fileOutputStream.write(buildReceiptPdfBytes());
                 fileOutputStream.flush();
@@ -324,6 +339,34 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         }
     }
 
+    private void ensureReceiptDisplayFieldsReady(Runnable onReady) {
+        if (onReady == null) {
+            return;
+        }
+
+        String writerForDisplay = normalizeDisplayCandidate(receiptWriterName);
+        if (!TextUtils.isEmpty(writerForDisplay) && !"Writer".equalsIgnoreCase(writerForDisplay)) {
+            onReady.run();
+            return;
+        }
+
+        String writerId = firstNonEmpty(assignedWriterId);
+        if (TextUtils.isEmpty(writerId)) {
+            onReady.run();
+            return;
+        }
+
+        resolveWriterNameForReceipt(writerId, resolvedWriterName -> {
+            String normalized = normalizeDisplayCandidate(resolvedWriterName);
+            if (!TextUtils.isEmpty(normalized) && !"Writer".equalsIgnoreCase(normalized)) {
+                receiptWriterName = normalized;
+            }
+            if (isAdded()) {
+                onReady.run();
+            }
+        });
+    }
+
     private void downloadReceipt() {
         if (!hasReceiptData()) {
             Toast.makeText(getContext(), "Receipt is not available yet", Toast.LENGTH_SHORT).show();
@@ -342,21 +385,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
         PdfDocument.Page page = pdfDocument.startPage(pageInfo);
 
-        Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        titlePaint.setTextSize(18f);
-        titlePaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-
-        Paint bodyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bodyPaint.setTextSize(12f);
-
-        int y = 60;
-        page.getCanvas().drawText("Official Payment Receipt", 40, y, titlePaint);
-        y += 30;
-
-        for (String line : buildReceiptText().split("\\n")) {
-            page.getCanvas().drawText(line, 40, y, bodyPaint);
-            y += 22;
-        }
+        renderProfessionalReceipt(page.getCanvas(), pageInfo.getPageWidth(), pageInfo.getPageHeight(), getReceiptPdfData());
 
         pdfDocument.finishPage(page);
 
@@ -364,6 +393,224 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         pdfDocument.writeTo(byteArrayOutputStream);
         pdfDocument.close();
         return byteArrayOutputStream.toByteArray();
+    }
+
+    private ReceiptPdfData getReceiptPdfData() {
+        String currency = TextUtils.isEmpty(receiptCurrency) ? "LKR" : receiptCurrency;
+        Double amountValue = receiptPaidAmount != null ? receiptPaidAmount : paymentAmount;
+        String amountText = formatCurrencyAmount(currency, amountValue);
+        String receiptNumberText = safeDisplay(firstNonEmpty(
+                normalizeDisplayCandidate(receiptNumber),
+                normalizeDisplayCandidate(receiptOrderId),
+                TextUtils.isEmpty(assignmentId) ? "" : "RCP-" + assignmentId
+        ));
+        String receiptDateText = safeDisplay(firstNonEmpty(
+                normalizeDisplayCandidate(receiptPaymentDateTime),
+                formatTimestamp(System.currentTimeMillis())
+        ));
+        String writerText = safeDisplay(firstNonEmpty(
+                normalizeDisplayCandidate(receiptWriterName),
+                normalizeDisplayCandidate(assignedWriterName),
+                "Writer"
+        ));
+
+        return new ReceiptPdfData(
+                "CampusAssist",
+                "Payment Receipt",
+                receiptNumberText,
+                receiptDateText,
+                getStudentNameText(),
+                writerText,
+                getAssignmentTitleText(),
+                safeDisplay(assignmentId),
+                "PayHere",
+                "Paid",
+                amountText,
+                TextUtils.isEmpty(deliveryAddressText) ? "N/A" : deliveryAddressText.trim(),
+                amountText,
+                amountText,
+                "Thank you for using CampusAssist",
+                "Support: support@campusassist.app"
+        );
+    }
+
+    private void renderProfessionalReceipt(Canvas canvas, int pageWidth, int pageHeight, ReceiptPdfData data) {
+        final float margin = 40f;
+        final float contentWidth = pageWidth - (2f * margin);
+        float y = margin;
+
+        Paint headerBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        headerBgPaint.setColor(Color.parseColor("#0F2D6B"));
+
+        Paint titleWhitePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        titleWhitePaint.setColor(Color.WHITE);
+        titleWhitePaint.setTextSize(19f);
+        titleWhitePaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+
+        Paint subtitleWhitePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        subtitleWhitePaint.setColor(Color.parseColor("#DCE8FF"));
+        subtitleWhitePaint.setTextSize(12f);
+
+        Paint sectionTitlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        sectionTitlePaint.setColor(Color.parseColor("#0F2D6B"));
+        sectionTitlePaint.setTextSize(12f);
+        sectionTitlePaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+
+        Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        labelPaint.setColor(Color.parseColor("#1F2937"));
+        labelPaint.setTextSize(11f);
+        labelPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+
+        Paint valuePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        valuePaint.setColor(Color.parseColor("#111827"));
+        valuePaint.setTextSize(11f);
+
+        Paint dividerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        dividerPaint.setColor(Color.parseColor("#D1D5DB"));
+        dividerPaint.setStrokeWidth(1.5f);
+
+        Paint totalBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        totalBgPaint.setColor(Color.parseColor("#E9F1FF"));
+
+        Paint totalTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        totalTextPaint.setColor(Color.parseColor("#0B1E4A"));
+        totalTextPaint.setTextSize(14f);
+        totalTextPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+
+        float headerHeight = 108f;
+        RectF headerRect = new RectF(margin, y, pageWidth - margin, y + headerHeight);
+        canvas.drawRoundRect(headerRect, 8f, 8f, headerBgPaint);
+
+        float headerTextX = margin + 18f;
+        float appNameY = y + 35f;
+        canvas.drawText(data.companyName, headerTextX, appNameY, titleWhitePaint);
+        canvas.drawText(data.title, headerTextX, appNameY + 22f, subtitleWhitePaint);
+        canvas.drawText("Receipt #: " + data.receiptNumber, headerTextX, appNameY + 44f, subtitleWhitePaint);
+        canvas.drawText("Date: " + data.paymentDateTime, headerTextX, appNameY + 62f, subtitleWhitePaint);
+
+        Bitmap logo = loadReceiptLogo();
+        if (logo != null) {
+            float targetW = 56f;
+            float targetH = 56f;
+            RectF logoRect = new RectF(pageWidth - margin - targetW - 16f, y + 18f, pageWidth - margin - 16f, y + 18f + targetH);
+            canvas.drawBitmap(logo, null, logoRect, null);
+        }
+
+        y = y + headerHeight + 20f;
+
+        y = drawSectionHeader(canvas, "Customer & Assignment Info", margin, y, sectionTitlePaint, dividerPaint, pageWidth);
+        y = drawKeyValueRow(canvas, "Student Name", data.studentName, margin, y, contentWidth, labelPaint, valuePaint);
+        y = drawKeyValueRow(canvas, "Writer Name", data.writerName, margin, y, contentWidth, labelPaint, valuePaint);
+        y = drawKeyValueRow(canvas, "Assignment Title", data.assignmentTitle, margin, y, contentWidth, labelPaint, valuePaint);
+        y = drawKeyValueRow(canvas, "Assignment ID", data.assignmentId, margin, y, contentWidth, labelPaint, valuePaint);
+
+        y += 8f;
+        y = drawSectionHeader(canvas, "Payment Details", margin, y, sectionTitlePaint, dividerPaint, pageWidth);
+        y = drawKeyValueRow(canvas, "Payment Method", data.paymentMethod, margin, y, contentWidth, labelPaint, valuePaint);
+        y = drawKeyValueRow(canvas, "Payment Status", data.paymentStatus, margin, y, contentWidth, labelPaint, valuePaint);
+        y = drawKeyValueRow(canvas, "Amount Paid", data.amountPaid, margin, y, contentWidth, labelPaint, totalTextPaint);
+
+        if (!TextUtils.isEmpty(data.address) && !"N/A".equalsIgnoreCase(data.address)) {
+            y += 8f;
+            y = drawSectionHeader(canvas, "Billing / Delivery Address", margin, y, sectionTitlePaint, dividerPaint, pageWidth);
+            y = drawWrappedText(canvas, data.address, margin, y, contentWidth, valuePaint, 17f) + 4f;
+        }
+
+        y += 10f;
+        y = drawSectionHeader(canvas, "Summary", margin, y, sectionTitlePaint, dividerPaint, pageWidth);
+        y = drawKeyValueRow(canvas, "Subtotal", data.subtotal, margin, y, contentWidth, labelPaint, valuePaint);
+
+        RectF totalRect = new RectF(margin, y + 2f, pageWidth - margin, y + 38f);
+        canvas.drawRoundRect(totalRect, 6f, 6f, totalBgPaint);
+        canvas.drawText("Total Amount", margin + 12f, y + 25f, totalTextPaint);
+        float totalWidth = totalTextPaint.measureText(data.totalAmount);
+        canvas.drawText(data.totalAmount, pageWidth - margin - 12f - totalWidth, y + 25f, totalTextPaint);
+        y += 46f;
+
+        float footerTop = Math.max(y + 8f, pageHeight - margin - 70f);
+        canvas.drawLine(margin, footerTop, pageWidth - margin, footerTop, dividerPaint);
+        canvas.drawText(data.thankYouMessage, margin, footerTop + 22f, valuePaint);
+        canvas.drawText(data.supportInfo, margin, footerTop + 40f, valuePaint);
+    }
+
+    private Bitmap loadReceiptLogo() {
+        int customLogoResId = requireContext().getResources().getIdentifier(
+                "receipt_logo",
+                "drawable",
+                requireContext().getPackageName()
+        );
+        int logoResId = customLogoResId != 0 ? customLogoResId : requireContext().getApplicationInfo().icon;
+        try {
+            return BitmapFactory.decodeResource(getResources(), logoResId);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private float drawSectionHeader(Canvas canvas,
+                                    String title,
+                                    float x,
+                                    float y,
+                                    Paint titlePaint,
+                                    Paint dividerPaint,
+                                    float pageWidth) {
+        canvas.drawText(title, x, y + 14f, titlePaint);
+        canvas.drawLine(x, y + 20f, pageWidth - x, y + 20f, dividerPaint);
+        return y + 34f;
+    }
+
+    private float drawKeyValueRow(Canvas canvas,
+                                  String label,
+                                  String value,
+                                  float x,
+                                  float y,
+                                  float maxWidth,
+                                  Paint labelPaint,
+                                  Paint valuePaint) {
+        float labelWidth = 128f;
+        canvas.drawText(label + ":", x, y + 13f, labelPaint);
+        float valueY = drawWrappedText(canvas,
+                TextUtils.isEmpty(value) ? "N/A" : value,
+                x + labelWidth,
+                y + 13f,
+                maxWidth - labelWidth,
+                valuePaint,
+                17f);
+        return valueY + 6f;
+    }
+
+    private float drawWrappedText(Canvas canvas,
+                                  String text,
+                                  float x,
+                                  float baselineY,
+                                  float maxWidth,
+                                  Paint paint,
+                                  float lineHeight) {
+        String safeText = TextUtils.isEmpty(text) ? "N/A" : text;
+        String[] words = safeText.split("\\s+");
+        StringBuilder lineBuilder = new StringBuilder();
+        float y = baselineY;
+
+        for (String word : words) {
+            String candidate = lineBuilder.length() == 0 ? word : lineBuilder + " " + word;
+            if (paint.measureText(candidate) <= maxWidth) {
+                lineBuilder.setLength(0);
+                lineBuilder.append(candidate);
+            } else {
+                if (lineBuilder.length() > 0) {
+                    canvas.drawText(lineBuilder.toString(), x, y, paint);
+                    y += lineHeight;
+                }
+                lineBuilder.setLength(0);
+                lineBuilder.append(word);
+            }
+        }
+
+        if (lineBuilder.length() > 0) {
+            canvas.drawText(lineBuilder.toString(), x, y, paint);
+        }
+
+        return y;
     }
 
     @Nullable
@@ -488,6 +735,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             fileUrl = args.getString("fileUrl", "");
             assignmentId = args.getString("assignmentId", "");
             studentId = args.getString("studentId", "");
+            assignedWriterName = args.getString("assignedWriterName", args.getString("writerName", ""));
             deliveryAddressText = args.getString("deliveryAddress", "");
 
             if (args.containsKey("paymentAmount")) {
@@ -706,6 +954,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         studentId = safe(assignment.getStudentId());
         fileUrl = safe(assignment.getFileUrl());
         assignedWriterId = safe(assignment.getAssignedWriterId());
+        assignedWriterName = safe(assignment.getAssignedWriterName());
         submissionFileUrlForStudent = safe(assignment.getSubmissionFileUrl());
         paymentAmount = assignment.getPaymentAmount();
         deliveryAddressText = safe(assignment.getDeliveryAddress());
@@ -2329,25 +2578,64 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             return;
         }
 
-        Object receiptObj = documentSnapshot.get("paymentReceipt");
-        if (!(receiptObj instanceof Map)) {
+        Map<String, Object> receipt = asObjectMap(documentSnapshot.get("paymentReceipt"));
+        Map<String, Object> verification = asObjectMap(documentSnapshot.get("paymentVerification"));
+
+        if (receipt == null && verification == null) {
             clearReceiptData();
             return;
         }
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> receipt = (Map<String, Object>) receiptObj;
-        receiptNumber = safeObject(receipt.get("receiptNumber"));
-        receiptOrderId = safeObject(receipt.get("orderId"));
-        receiptTransactionId = safeObject(receipt.get("transactionId"));
-        receiptWriterName = safeObject(receipt.get("writerName"));
-        receiptPaymentStatus = safeObject(receipt.get("paymentStatus"));
-        receiptPaymentDateTime = safeObject(receipt.get("paymentDateTime"));
-        receiptCurrency = safeObject(receipt.get("currency"));
+        String assignmentIdForReceipt = firstNonEmpty(assignmentId, documentSnapshot.getId());
+        String fallbackReceiptNumber = TextUtils.isEmpty(assignmentIdForReceipt) ? "" : "RCP-" + assignmentIdForReceipt;
+        receiptNumber = firstNonEmpty(
+                firstNonEmptyMapString(receipt, "receiptNumber", "receiptNo", "receipt_id", "invoiceNumber", "invoiceNo"),
+                fallbackReceiptNumber
+        );
+        receiptOrderId = firstNonEmpty(
+                firstNonEmptyMapString(receipt, "orderId", "orderID", "order_id"),
+                firstNonEmptyMapString(verification, "orderId", "orderID", "order_id"),
+                currentOrderId
+        );
+        receiptTransactionId = firstNonEmpty(
+                firstNonEmptyMapString(receipt, "transactionId", "transactionReference", "paymentId", "payment_id", "reference", "transaction_id"),
+                firstNonEmptyMapString(verification, "transactionReference", "transactionId", "paymentId", "payment_id", "reference", "transaction_id"),
+                receiptOrderId
+        );
+        receiptWriterName = firstNonEmpty(
+                firstNonEmptyMapString(receipt, "writerName", "assignedWriterName", "writer"),
+                safe(documentSnapshot.getString("assignedWriterName")),
+                assignedWriterName,
+                "Writer"
+        );
+        receiptPaymentStatus = firstNonEmpty(
+                firstNonEmptyMapString(receipt, "paymentStatus", "status"),
+                firstNonEmptyMapString(verification, "status"),
+                "Paid"
+        );
+        receiptPaymentDateTime = firstNonEmpty(
+                firstNonEmptyMapString(receipt, "paymentDateTime", "paidAt", "capturedAt"),
+                firstNonEmptyMapString(verification, "paidAt", "capturedAt"),
+                formatTimestamp(firstNonNullLong(
+                        firstLongFromMap(receipt, "paymentDateTimestamp", "paidAtTimestamp", "paymentTimestamp"),
+                        getDocumentLong(documentSnapshot, "paymentCompletedAt"),
+                        getDocumentLong(documentSnapshot, "paymentVerifiedAt")
+                )),
+                formatTimestamp(System.currentTimeMillis())
+        );
+        receiptCurrency = firstNonEmpty(
+                firstNonEmptyMapString(receipt, "currency"),
+                firstNonEmptyMapString(verification, "currency"),
+                "LKR"
+        );
         if (TextUtils.isEmpty(receiptCurrency)) {
             receiptCurrency = "LKR";
         }
-        receiptPaidAmount = objectToDouble(receipt.get("paidAmount"));
+        receiptPaidAmount = firstNonNullDouble(
+                firstDoubleFromMap(receipt, "paidAmount", "amountPaid", "amount", "totalAmount", "subtotal"),
+                firstDoubleFromMap(verification, "amount", "paidAmount"),
+                paymentAmount
+        );
     }
 
     private Map<String, Object> buildReceiptMap(VerifiedPaymentData verifiedPaymentData, String writerName, long verifiedAt) {
@@ -2412,33 +2700,24 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     }
 
     private boolean hasReceiptData() {
-        return !TextUtils.isEmpty(receiptNumber)
-                && !TextUtils.isEmpty(receiptOrderId)
-                && !TextUtils.isEmpty(receiptTransactionId);
-    }
-
-    private String buildReceiptText() {
-        String amountText = receiptPaidAmount != null
-                ? String.format(Locale.US, "%s %,.2f", TextUtils.isEmpty(receiptCurrency) ? "LKR" : receiptCurrency, receiptPaidAmount)
-                : "N/A";
-
-        StringBuilder builder = new StringBuilder();
-        builder.append("Official Payment Receipt\n");
-        builder.append("Receipt Number: ").append(safeDisplay(receiptNumber)).append("\n");
-        builder.append("Assignment ID: ").append(safeDisplay(assignmentId)).append("\n");
-        builder.append("Order ID: ").append(safeDisplay(receiptOrderId)).append("\n");
-        builder.append("Transaction Reference ID: ").append(safeDisplay(receiptTransactionId)).append("\n");
-        builder.append("Student Name: ").append(getStudentNameText()).append("\n");
-        builder.append("Writer Name: ").append(safeDisplay(receiptWriterName)).append("\n");
-        builder.append("Assignment Title: ").append(getAssignmentTitleText()).append("\n");
-        builder.append("Paid Amount: ").append(amountText).append("\n");
-        builder.append("Payment Date/Time: ").append(safeDisplay(receiptPaymentDateTime)).append("\n");
-        builder.append("Payment Status: ").append(safeDisplay(receiptPaymentStatus));
-        return builder.toString();
+        return !TextUtils.isEmpty(normalizeDisplayCandidate(receiptNumber))
+                || !TextUtils.isEmpty(normalizeDisplayCandidate(receiptOrderId))
+                || receiptPaidAmount != null;
     }
 
     private String safeDisplay(String value) {
-        return TextUtils.isEmpty(value) ? "N/A" : value;
+        if (TextUtils.isEmpty(value)) {
+            return "N/A";
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()
+                || "null".equalsIgnoreCase(trimmed)
+                || "n/a".equalsIgnoreCase(trimmed)
+                || "na".equalsIgnoreCase(trimmed)
+                || "undefined".equalsIgnoreCase(trimmed)) {
+            return "N/A";
+        }
+        return trimmed;
     }
 
     private void clearReceiptData() {
@@ -2456,6 +2735,109 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         return value == null ? "" : String.valueOf(value);
     }
 
+    private String normalizeDisplayCandidate(String value) {
+        String display = safeDisplay(value);
+        return "N/A".equals(display) ? "" : display;
+    }
+
+    @Nullable
+    private Long getDocumentLong(DocumentSnapshot documentSnapshot, String field) {
+        if (documentSnapshot == null || TextUtils.isEmpty(field)) {
+            return null;
+        }
+        return documentSnapshot.getLong(field);
+    }
+
+    @Nullable
+    private Long firstLongFromMap(@Nullable Map<String, Object> map, String... keys) {
+        if (map == null || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            Long value = objectToLong(map.get(key));
+            if (value != null && value > 0L) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private Long firstNonNullLong(Long... values) {
+        if (values == null) {
+            return null;
+        }
+        for (Long value : values) {
+            if (value != null && value > 0L) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private String buildReceiptCacheFileName() {
+        String base = TextUtils.isEmpty(receiptNumber) ? "receipt" : receiptNumber.replaceAll("[^A-Za-z0-9_-]", "_");
+        return "Receipt_" + base + "_" + System.currentTimeMillis() + ".pdf";
+    }
+
+    private String formatCurrencyAmount(String currency, Double amount) {
+        if (amount == null) {
+            return "N/A";
+        }
+        String safeCurrency = TextUtils.isEmpty(currency) ? "LKR" : currency;
+        return String.format(Locale.US, "%s %,.2f", safeCurrency, amount);
+    }
+
+    private String firstNonEmptyMapString(@Nullable Map<String, Object> map, String... keys) {
+        if (map == null || keys == null) {
+            return "";
+        }
+        for (String key : keys) {
+            String value = safeObject(map.get(key));
+            if (!"N/A".equals(safeDisplay(value))) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
+    @Nullable
+    private Map<String, Object> asObjectMap(Object value) {
+        if (value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> mapValue = (Map<String, Object>) value;
+            return mapValue;
+        }
+        return null;
+    }
+
+    @Nullable
+    private Double firstDoubleFromMap(@Nullable Map<String, Object> map, String... keys) {
+        if (map == null || keys == null) {
+            return null;
+        }
+        for (String key : keys) {
+            Double value = objectToDouble(map.get(key));
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private Double firstNonNullDouble(Double... values) {
+        if (values == null) {
+            return null;
+        }
+        for (Double value : values) {
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
     private Double objectToDouble(Object value) {
         if (value instanceof Number) {
             return ((Number) value).doubleValue();
@@ -2463,6 +2845,23 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         if (value instanceof String) {
             try {
                 return Double.parseDouble((String) value);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private Long objectToLong(Object value) {
+        if (value instanceof Number) {
+            long longValue = ((Number) value).longValue();
+            return longValue > 0L ? longValue : null;
+        }
+        if (value instanceof String) {
+            try {
+                long longValue = Long.parseLong(((String) value).trim());
+                return longValue > 0L ? longValue : null;
             } catch (NumberFormatException ignored) {
                 return null;
             }
@@ -2576,6 +2975,59 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             map.put("paidAt", paidAt);
             map.put("rawResponse", rawResponse);
             return map;
+        }
+    }
+
+    private static class ReceiptPdfData {
+        final String companyName;
+        final String title;
+        final String receiptNumber;
+        final String paymentDateTime;
+        final String studentName;
+        final String writerName;
+        final String assignmentTitle;
+        final String assignmentId;
+        final String paymentMethod;
+        final String paymentStatus;
+        final String amountPaid;
+        final String address;
+        final String subtotal;
+        final String totalAmount;
+        final String thankYouMessage;
+        final String supportInfo;
+
+        ReceiptPdfData(String companyName,
+                       String title,
+                       String receiptNumber,
+                       String paymentDateTime,
+                       String studentName,
+                       String writerName,
+                       String assignmentTitle,
+                       String assignmentId,
+                       String paymentMethod,
+                       String paymentStatus,
+                       String amountPaid,
+                       String address,
+                       String subtotal,
+                       String totalAmount,
+                       String thankYouMessage,
+                       String supportInfo) {
+            this.companyName = companyName;
+            this.title = title;
+            this.receiptNumber = receiptNumber;
+            this.paymentDateTime = paymentDateTime;
+            this.studentName = studentName;
+            this.writerName = writerName;
+            this.assignmentTitle = assignmentTitle;
+            this.assignmentId = assignmentId;
+            this.paymentMethod = paymentMethod;
+            this.paymentStatus = paymentStatus;
+            this.amountPaid = amountPaid;
+            this.address = address;
+            this.subtotal = subtotal;
+            this.totalAmount = totalAmount;
+            this.thankYouMessage = thankYouMessage;
+            this.supportInfo = supportInfo;
         }
     }
 
