@@ -5,6 +5,9 @@ import android.app.DatePickerDialog;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.graphics.Paint;
+import android.graphics.Typeface;
+import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,6 +29,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -50,6 +54,9 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -276,13 +283,88 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                         Toast.makeText(getContext(), "Unable to write receipt file", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    outputStream.write(buildReceiptText().getBytes());
+                    outputStream.write(buildReceiptPdfBytes());
                     outputStream.flush();
                     Toast.makeText(getContext(), "Receipt downloaded", Toast.LENGTH_SHORT).show();
                 } catch (Exception e) {
                     Toast.makeText(getContext(), "Failed to save receipt: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 }
             });
+
+    private void viewReceiptPdf() {
+        if (!hasReceiptData()) {
+            Toast.makeText(getContext(), "Receipt is not available yet", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            File receiptFile = new File(requireContext().getCacheDir(), "Receipt_" + receiptNumber + ".pdf");
+            try (FileOutputStream fileOutputStream = new FileOutputStream(receiptFile)) {
+                fileOutputStream.write(buildReceiptPdfBytes());
+                fileOutputStream.flush();
+            }
+
+            Uri pdfUri = FileProvider.getUriForFile(
+                    requireContext(),
+                    requireContext().getPackageName() + ".fileprovider",
+                    receiptFile
+            );
+
+            Intent viewIntent = new Intent(Intent.ACTION_VIEW);
+            viewIntent.setDataAndType(pdfUri, "application/pdf");
+            viewIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            if (viewIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
+                startActivity(viewIntent);
+            } else {
+                Toast.makeText(getContext(), "No PDF viewer found", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Failed to open receipt PDF: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void downloadReceipt() {
+        if (!hasReceiptData()) {
+            Toast.makeText(getContext(), "Receipt is not available yet", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/pdf");
+        intent.putExtra(Intent.EXTRA_TITLE, "Receipt_" + receiptNumber + ".pdf");
+        receiptDownloadLauncher.launch(intent);
+    }
+
+    private byte[] buildReceiptPdfBytes() throws Exception {
+        PdfDocument pdfDocument = new PdfDocument();
+        PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
+        PdfDocument.Page page = pdfDocument.startPage(pageInfo);
+
+        Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        titlePaint.setTextSize(18f);
+        titlePaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+
+        Paint bodyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bodyPaint.setTextSize(12f);
+
+        int y = 60;
+        page.getCanvas().drawText("Official Payment Receipt", 40, y, titlePaint);
+        y += 30;
+
+        for (String line : buildReceiptText().split("\\n")) {
+            page.getCanvas().drawText(line, 40, y, bodyPaint);
+            y += 22;
+        }
+
+        pdfDocument.finishPage(page);
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        pdfDocument.writeTo(byteArrayOutputStream);
+        pdfDocument.close();
+        return byteArrayOutputStream.toByteArray();
+    }
 
     @Nullable
     @Override
@@ -526,7 +608,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         btnPayNow.setOnClickListener(v -> onPayNowClicked());
         btnOpenDeliveryMap.setOnClickListener(v -> openDeliveryLocationOnMap());
         if (btnViewReceipt != null) {
-            btnViewReceipt.setOnClickListener(v -> showReceiptDialog());
+            btnViewReceipt.setOnClickListener(v -> viewReceiptPdf());
         }
         if (btnDownloadReceipt != null) {
             btnDownloadReceipt.setOnClickListener(v -> downloadReceipt());
@@ -2335,31 +2417,6 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                 && !TextUtils.isEmpty(receiptTransactionId);
     }
 
-    private void showReceiptDialog() {
-        if (!hasReceiptData()) {
-            Toast.makeText(getContext(), "Receipt is not available yet", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Official Payment Receipt")
-                .setMessage(buildReceiptText())
-                .setPositiveButton("Close", (dialog, which) -> dialog.dismiss())
-                .show();
-    }
-
-    private void downloadReceipt() {
-        if (!hasReceiptData()) {
-            Toast.makeText(getContext(), "Receipt is not available yet", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("text/plain");
-        intent.putExtra(Intent.EXTRA_TITLE, "Receipt_" + receiptNumber + ".txt");
-        receiptDownloadLauncher.launch(intent);
-    }
-
     private String buildReceiptText() {
         String amountText = receiptPaidAmount != null
                 ? String.format(Locale.US, "%s %,.2f", TextUtils.isEmpty(receiptCurrency) ? "LKR" : receiptCurrency, receiptPaidAmount)
@@ -2472,18 +2529,6 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         }
     }
 
-    @Override
-    public void onDestroyView() {
-        deliveryPreviewMap = null;
-        deliveryLocationMarker = null;
-        FragmentManager childManager = getChildFragmentManager();
-        Fragment mapFragment = childManager.findFragmentByTag("delivery_preview_map");
-        if (mapFragment != null) {
-            childManager.beginTransaction().remove(mapFragment).commitAllowingStateLoss();
-        }
-        super.onDestroyView();
-    }
-
     private String safe(String value) {
         return value == null ? "" : value;
     }
@@ -2533,6 +2578,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
             return map;
         }
     }
+
 
     private void sendNotification(String recipientUserId,
                                   String recipientRole,
