@@ -117,6 +117,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     private MaterialButton btnBidForAssignment, btnStartWork, btnPickSubmissionFile, btnSubmitCompletedWork;
     private MaterialButton btnPayNow;
     private MaterialButton btnOpenDeliveryMap;
+    private MaterialButton btnCancelBid;
     private ProgressBar progressAssignmentDetails;
     private TextInputEditText etSubmissionNotes;
     private LinearLayout completeWorkSection;
@@ -129,6 +130,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     private MaterialButton btnDownloadReceipt;
     private TextView tvWriterNoteStudent;
     private TextView tvMapPreviewHint;
+    private TextView tvWriterBidMessage;
     private FirebaseFirestore firebaseFirestore;
     private FirebaseStorage firebaseStorage;
     private StorageReference storageReference;
@@ -144,6 +146,8 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
     private String currentFileName = "";
     private String assignmentStatus = "";
     private String writerBidStatus = "";
+    private String currentWriterBidId = "";
+    private String currentWriterBidStatus = "";
     private String writerWorkStatus = "";
     private String newFileUrl = "";
     private String newFileName = "";
@@ -666,6 +670,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         btnSave = view.findViewById(R.id.btnSave);
         btnCancel = view.findViewById(R.id.btnCancel);
         btnBidForAssignment = view.findViewById(R.id.btnBidForAssignment);
+        btnCancelBid = view.findViewById(R.id.btnCancelBid);
         studentBidsSection = view.findViewById(R.id.studentBidsSection);
         writerWorkSection = view.findViewById(R.id.writerWorkSection);
         recyclerBids = view.findViewById(R.id.recyclerBids);
@@ -694,6 +699,7 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
         btnDownloadReceipt = view.findViewById(R.id.btnDownloadReceipt);
         tvWriterNoteStudent = view.findViewById(R.id.tvWriterNoteStudent);
         tvMapPreviewHint = view.findViewById(R.id.tvMapPreviewHint);
+        tvWriterBidMessage = view.findViewById(R.id.tvWriterBidMessage);
 
         bidWriterAdapter = new BidWriterAdapter(new BidWriterAdapter.BidActionListener() {
             @Override
@@ -850,6 +856,9 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
 
         // Handle writer bid action
         btnBidForAssignment.setOnClickListener(v -> placeBidForAssignment());
+        if (btnCancelBid != null) {
+            btnCancelBid.setOnClickListener(v -> showCancelBidConfirmation());
+        }
         btnStartWork.setOnClickListener(v -> startWork());
         btnPickSubmissionFile.setOnClickListener(v -> submissionFilePickerLauncher.launch("*/*"));
         btnSubmitCompletedWork.setOnClickListener(v -> submitCompletedWork());
@@ -881,18 +890,36 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
 
             if (fromMyWork) {
                 btnBidForAssignment.setVisibility(View.GONE);
+                if (tvWriterBidMessage != null) {
+                    tvWriterBidMessage.setVisibility(View.GONE);
+                }
+                if (btnCancelBid != null) {
+                    btnCancelBid.setVisibility(View.GONE);
+                }
                 writerWorkSection.setVisibility(View.VISIBLE);
                 setupWriterWorkSection();
             } else {
                 writerWorkSection.setVisibility(View.GONE);
                 if (assignmentId != null && !assignmentId.isEmpty()) {
-                    btnBidForAssignment.setVisibility(View.VISIBLE);
+                    loadWriterBidState();
                 } else {
                     btnBidForAssignment.setVisibility(View.GONE);
+                    if (tvWriterBidMessage != null) {
+                        tvWriterBidMessage.setVisibility(View.GONE);
+                    }
+                    if (btnCancelBid != null) {
+                        btnCancelBid.setVisibility(View.GONE);
+                    }
                 }
             }
         } else {
             btnBidForAssignment.setVisibility(View.GONE);
+            if (tvWriterBidMessage != null) {
+                tvWriterBidMessage.setVisibility(View.GONE);
+            }
+            if (btnCancelBid != null) {
+                btnCancelBid.setVisibility(View.GONE);
+            }
             writerWorkSection.setVisibility(View.GONE);
             applyStudentEditDeleteState();
             studentBidsSection.setVisibility(View.VISIBLE);
@@ -1328,7 +1355,6 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                         return;
                     }
 
-                    User writer = documentSnapshot.toObject(User.class);
                     String firstName = documentSnapshot.getString("firstName") != null
                             ? documentSnapshot.getString("firstName").trim() : "";
                     String lastName = documentSnapshot.getString("lastName") != null
@@ -1354,8 +1380,10 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                     bidRepository.createBid(bidModel, new BidRepository.OnBidActionCallback() {
                         @Override
                         public void onSuccess() {
-                            btnBidForAssignment.setText("Bid Submitted");
-                            btnBidForAssignment.setEnabled(false);
+                            currentWriterBidId = safe(bidModel.getBidId());
+                            currentWriterBidStatus = "Pending";
+                            writerBidStatus = "Pending";
+                            updateWriterBidUi(true);
                             sendNotification(
                                     studentId,
                                     "student",
@@ -1382,6 +1410,10 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                         @Override
                         public void onError(String errorMessage) {
                             btnBidForAssignment.setEnabled(true);
+                            if (!TextUtils.isEmpty(errorMessage)
+                                    && errorMessage.toLowerCase(Locale.US).contains("already placed")) {
+                                loadWriterBidState();
+                            }
                             Toast.makeText(getContext(), errorMessage, Toast.LENGTH_SHORT).show();
                         }
                     });
@@ -1390,6 +1422,128 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
                     btnBidForAssignment.setEnabled(true);
                     Toast.makeText(getContext(), "Error loading profile: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+    }
+
+    private void loadWriterBidState() {
+        if (!isWriterView || fromMyWork) {
+            return;
+        }
+
+        if (firebaseAuth.getCurrentUser() == null || TextUtils.isEmpty(assignmentId)) {
+            currentWriterBidId = "";
+            currentWriterBidStatus = "";
+            updateWriterBidUi(false);
+            return;
+        }
+
+        String writerId = firebaseAuth.getCurrentUser().getUid();
+        if (btnBidForAssignment != null) {
+            btnBidForAssignment.setEnabled(false);
+        }
+
+        bidRepository.getLatestBidByAssignmentAndWriter(assignmentId, writerId, new BidRepository.OnBidLoadedCallback() {
+            @Override
+            public void onBidLoaded(BidModel bidModel) {
+                if (!isAdded()) {
+                    return;
+                }
+
+                boolean hasActiveBid = false;
+                currentWriterBidId = "";
+                currentWriterBidStatus = "";
+
+                if (bidModel != null) {
+                    currentWriterBidId = safe(bidModel.getBidId());
+                    currentWriterBidStatus = safe(bidModel.getStatus());
+                    writerBidStatus = currentWriterBidStatus;
+                    hasActiveBid = isWriterBidActive(currentWriterBidStatus);
+                }
+
+                updateWriterBidUi(hasActiveBid);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                if (!isAdded()) {
+                    return;
+                }
+                updateWriterBidUi(false);
+                Toast.makeText(getContext(), "Failed to load bid state: " + errorMessage, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void updateWriterBidUi(boolean hasActiveBid) {
+        if (btnBidForAssignment != null) {
+            btnBidForAssignment.setVisibility(hasActiveBid ? View.GONE : View.VISIBLE);
+            btnBidForAssignment.setEnabled(!hasActiveBid);
+            btnBidForAssignment.setText("Bid for Assignment");
+        }
+        if (tvWriterBidMessage != null) {
+            tvWriterBidMessage.setVisibility(hasActiveBid ? View.VISIBLE : View.GONE);
+            tvWriterBidMessage.setText("You have already bid for this assignment.");
+        }
+        if (btnCancelBid != null) {
+            btnCancelBid.setVisibility(hasActiveBid ? View.VISIBLE : View.GONE);
+            btnCancelBid.setEnabled(hasActiveBid);
+        }
+    }
+
+    private void showCancelBidConfirmation() {
+        if (TextUtils.isEmpty(currentWriterBidId)) {
+            Toast.makeText(getContext(), "No active bid to cancel", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Cancel Bid")
+                .setMessage("Do you want to cancel your bid for this assignment?")
+                .setPositiveButton("Cancel Bid", (dialog, which) -> cancelCurrentWriterBid())
+                .setNegativeButton("Keep", null)
+                .show();
+    }
+
+    private void cancelCurrentWriterBid() {
+        if (TextUtils.isEmpty(currentWriterBidId)) {
+            Toast.makeText(getContext(), "No active bid to cancel", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (btnCancelBid != null) {
+            btnCancelBid.setEnabled(false);
+        }
+
+        bidRepository.cancelBid(currentWriterBidId, new BidRepository.OnBidActionCallback() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) {
+                    return;
+                }
+                currentWriterBidStatus = "Cancelled";
+                writerBidStatus = "Cancelled";
+                currentWriterBidId = "";
+                updateWriterBidUi(false);
+                Toast.makeText(getContext(), "Bid cancelled", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                if (!isAdded()) {
+                    return;
+                }
+                if (btnCancelBid != null) {
+                    btnCancelBid.setEnabled(true);
+                }
+                Toast.makeText(getContext(), "Failed to cancel bid: " + errorMessage, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private boolean isWriterBidActive(String status) {
+        if (TextUtils.isEmpty(status)) {
+            return true;
+        }
+        return !(status.equalsIgnoreCase("Cancelled") || status.equalsIgnoreCase("Rejected"));
     }
 
     private void loadBidsForAssignment() {

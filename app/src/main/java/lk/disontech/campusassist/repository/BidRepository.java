@@ -27,7 +27,16 @@ public class BidRepository {
                 .whereEqualTo("writerId", bidModel.getWriterId())
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
-                    if (!querySnapshot.isEmpty()) {
+                    boolean hasActiveBid = false;
+                    for (DocumentSnapshot documentSnapshot : querySnapshot.getDocuments()) {
+                        String status = documentSnapshot.getString("status");
+                        if (isActiveBidStatus(status)) {
+                            hasActiveBid = true;
+                            break;
+                        }
+                    }
+
+                    if (hasActiveBid) {
                         callback.onError("You already placed a bid for this assignment");
                         return;
                     }
@@ -42,6 +51,32 @@ public class BidRepository {
                             .set(bidModel)
                             .addOnSuccessListener(unused -> callback.onSuccess())
                             .addOnFailureListener(e -> callback.onError(e.getMessage()));
+                })
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
+
+    public void getLatestBidByAssignmentAndWriter(@NonNull String assignmentId,
+                                                   @NonNull String writerId,
+                                                   @NonNull OnBidLoadedCallback callback) {
+        firestore.collection("Bids")
+                .whereEqualTo("assignmentId", assignmentId)
+                .whereEqualTo("writerId", writerId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    BidModel latestBid = null;
+                    for (DocumentSnapshot documentSnapshot : querySnapshot.getDocuments()) {
+                        BidModel bidModel = documentSnapshot.toObject(BidModel.class);
+                        if (bidModel == null) {
+                            continue;
+                        }
+                        if (bidModel.getBidId() == null || bidModel.getBidId().trim().isEmpty()) {
+                            bidModel.setBidId(documentSnapshot.getId());
+                        }
+                        if (latestBid == null || bidModel.getCreatedAt() > latestBid.getCreatedAt()) {
+                            latestBid = bidModel;
+                        }
+                    }
+                    callback.onBidLoaded(latestBid);
                 })
                 .addOnFailureListener(e -> callback.onError(e.getMessage()));
     }
@@ -157,6 +192,19 @@ public class BidRepository {
         void onBidsLoaded(List<BidModel> bids);
 
         void onError(String errorMessage);
+    }
+
+    public interface OnBidLoadedCallback {
+        void onBidLoaded(BidModel bidModel);
+
+        void onError(String errorMessage);
+    }
+
+    private boolean isActiveBidStatus(String status) {
+        if (status == null) {
+            return true;
+        }
+        return !(status.equalsIgnoreCase("Cancelled") || status.equalsIgnoreCase("Rejected"));
     }
 }
 

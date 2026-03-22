@@ -447,6 +447,31 @@
                 app:iconTint="?attr/colorOnPrimary"
                 style="?attr/materialButtonStyle" />
 
+            <TextView
+                android:id="@+id/tvWriterBidMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="?attr/colorSurfaceContainerHigh"
+                android:padding="12dp"
+                android:text="You have already bid for this assignment."
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancelBid"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="10dp"
+                android:text="Cancel Bid"
+                android:textAllCaps="false"
+                android:visibility="gone"
+                app:icon="@android:drawable/ic_menu_close_clear_cancel"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp" />
+
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/writerWorkSection"
                 android:layout_width="match_parent"
