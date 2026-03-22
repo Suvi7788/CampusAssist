@@ -34,8 +34,8 @@ import lk.disontech.campusassist.model.User;
 
 public class WriterProfileFragment extends Fragment {
 
-    private TextView tvInitials, tvName, tvField, tvRating, tvReviews;
-    private TextView tvCompleted, tvStatRating, tvTopPercent, tvAbout, tvEducation;
+    private TextView tvInitials, tvName, tvField;
+    private TextView tvCompleted, tvTopPercent, tvAbout, tvEducation;
     private TextView tvPhone, tvEmail;
     private com.google.android.material.imageview.ShapeableImageView imgAvatar;
     private View editProfileSection;
@@ -77,11 +77,8 @@ public class WriterProfileFragment extends Fragment {
         imgAvatar = view.findViewById(R.id.imgAvatar);
         tvName = view.findViewById(R.id.tvName);
         tvField = view.findViewById(R.id.tvField);
-        tvRating = view.findViewById(R.id.tvRating);
-        tvReviews = view.findViewById(R.id.tvReviews);
 
         tvCompleted = view.findViewById(R.id.tvCompleted);
-        tvStatRating = view.findViewById(R.id.tvStatRating);
         tvTopPercent = view.findViewById(R.id.tvTopPercent);
 
         tvAbout = view.findViewById(R.id.tvAbout);
@@ -115,10 +112,7 @@ public class WriterProfileFragment extends Fragment {
         tvInitials.setText("-");
         tvName.setText("Loading profile...");
         tvField.setText("Writer");
-        tvRating.setText("N/A");
-        tvReviews.setText("(0 reviews)");
         tvCompleted.setText("0");
-        tvStatRating.setText("N/A");
         tvTopPercent.setText("N/A");
         tvAbout.setText("No bio available yet.");
         tvEducation.setText("Not provided");
@@ -215,28 +209,18 @@ public class WriterProfileFragment extends Fragment {
 
                     loadAvatar(currentProfilePicUrl);
 
-                    // Keep static placeholders for metrics until rating/review backend is available.
-                    tvRating.setText("N/A");
-                    tvReviews.setText("(0 reviews)");
+                    // Keep static placeholders for metrics until full analytics backend is available.
                     tvCompleted.setText("0");
-                    tvStatRating.setText("N/A");
                     tvTopPercent.setText(userType.isEmpty() ? "Writer" : userType);
 
-                    loadWriterStatistics(finalWriterId, documentSnapshot);
+                    loadWriterStatistics(finalWriterId);
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(getContext(), "Error loading profile: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                 );
     }
 
-    private void loadWriterStatistics(String writerId, com.google.firebase.firestore.DocumentSnapshot writerSnapshot) {
-        Double ratingValue = writerSnapshot.getDouble("rating");
-        Long reviewsCount = writerSnapshot.getLong("reviewsCount");
-
-        tvRating.setText(formatRating(ratingValue));
-        tvStatRating.setText(formatRating(ratingValue));
-        tvReviews.setText("(" + (reviewsCount != null ? reviewsCount : 0L) + " reviews)");
-
+    private void loadWriterStatistics(String writerId) {
         firebaseFirestore.collection("Assignments")
                 .whereEqualTo("assignedWriterId", writerId)
                 .whereEqualTo("status", "Completed")
@@ -425,12 +409,5 @@ public class WriterProfileFragment extends Fragment {
 
     private String safe(String value) {
         return value == null ? "" : value.trim();
-    }
-
-    private String formatRating(Double rating) {
-        if (rating == null || rating <= 0) {
-            return "N/A";
-        }
-        return String.format(java.util.Locale.US, "%.1f", rating);
     }
 }

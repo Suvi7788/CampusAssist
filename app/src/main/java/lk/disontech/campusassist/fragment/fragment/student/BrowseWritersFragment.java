@@ -40,26 +40,22 @@ public class BrowseWritersFragment extends Fragment {
     }
 
     private void loadDummyWriters(LayoutInflater inflater) {
-        addWriter(inflater, "Dr. Sarah Johnson", "Mathematics & Statistics", "SJ", 4.9, 127);
-        addWriter(inflater, "Prof. Michael Chen", "Computer Science", "MC", 4.8, 95);
-        addWriter(inflater, "Dr. Emily Brown", "Literature & History", "EB", 5.0, 143);
-        addWriter(inflater, "James Wilson", "Physics & Engineering", "JW", 4.7, 82);
+        addWriter(inflater, "Dr. Sarah Johnson", "Mathematics & Statistics", "SJ");
+        addWriter(inflater, "Prof. Michael Chen", "Computer Science", "MC");
+        addWriter(inflater, "Dr. Emily Brown", "Literature & History", "EB");
+        addWriter(inflater, "James Wilson", "Physics & Engineering", "JW");
     }
 
     private void addWriter(LayoutInflater inflater,
                            String name,
                            String field,
-                           String initials,
-                           double rating,
-                           int reviews) {
+                           String initials) {
 
         View card = inflater.inflate(R.layout.item_writer_card, writersContainer, false);
 
         TextView tvName = card.findViewById(R.id.tvName);
         TextView tvField = card.findViewById(R.id.tvField);
         TextView tvInitials = card.findViewById(R.id.tvInitials);
-        TextView tvRating = card.findViewById(R.id.tvRating);
-        TextView tvReviews = card.findViewById(R.id.tvReviews);
 
         MaterialButton btnViewProfile = card.findViewById(R.id.btnViewProfile);
         MaterialButton btnContact = card.findViewById(R.id.btnContact);
@@ -67,8 +63,6 @@ public class BrowseWritersFragment extends Fragment {
         tvName.setText(name);
         tvField.setText(field);
         tvInitials.setText(initials);
-        tvRating.setText(String.valueOf(rating));
-        tvReviews.setText("(" + reviews + " reviews)");
 
         btnViewProfile.setOnClickListener(v -> {
 
@@ -76,8 +70,6 @@ public class BrowseWritersFragment extends Fragment {
             bundle.putString("name", name);
             bundle.putString("field", field);
             bundle.putString("initials", initials);
-            bundle.putDouble("rating", rating);
-            bundle.putInt("reviews", reviews);
 
             WriterProfileFragment fragment = new WriterProfileFragment();
             fragment.setArguments(bundle);

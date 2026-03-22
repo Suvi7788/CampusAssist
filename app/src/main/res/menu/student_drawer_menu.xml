@@ -16,10 +16,6 @@
         android:icon="@android:drawable/ic_menu_agenda"
         android:title="My Assignments" />
 
-    <item
-        android:id="@+id/nav_browse_writers"
-        android:icon="@android:drawable/ic_menu_search"
-        android:title="Browse Writers" />
 
     <item
         android:id="@+id/nav_notifications"

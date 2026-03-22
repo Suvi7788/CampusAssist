@@ -18,7 +18,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import java.util.Locale;
 
 import lk.disontech.campusassist.R;
-import lk.disontech.campusassist.fragment.fragment.student.BrowseWritersFragment;
 import lk.disontech.campusassist.fragment.fragment.student.HelpGuidelinesFragment;
 import lk.disontech.campusassist.fragment.fragment.student.MyAssignmentsFragment;
 import lk.disontech.campusassist.fragment.fragment.student.NotificationsFragment;
@@ -121,8 +120,6 @@ public class DashboardActivity extends AppCompatActivity
                 openPostNewAssignment();
             } else if (id == R.id.nav_my_assignments) {
                 openMyAssignments();
-            } else if (id == R.id.nav_browse_writers) {
-                openBrowseWriters();
             } else if (id == R.id.nav_notifications) {
                 openNotifications();
             } else if (id == R.id.nav_help) {
@@ -243,10 +240,6 @@ public class DashboardActivity extends AppCompatActivity
         openFragment(fragment);
     }
 
-    // Kept for drawer menu navigation.
-    public void openBrowseWriters() {
-        openFragment(new BrowseWritersFragment());
-    }
 
     @Override
     public void openNotifications() {

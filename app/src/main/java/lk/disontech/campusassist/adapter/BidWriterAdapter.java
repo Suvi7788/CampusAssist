@@ -53,7 +53,6 @@ public class BidWriterAdapter extends RecyclerView.Adapter<BidWriterAdapter.BidV
         BidModel bid = bidList.get(position);
         holder.tvWriterName.setText(bid.getWriterName());
         holder.tvCompletedProjects.setText(String.valueOf(bid.getCompletedProjectsCount()));
-        holder.tvWriterRating.setText(formatRating(bid.getRating()));
         holder.tvBidStatus.setText(getStatusLabel(bid.getStatus()));
 
         boolean isPending = bid.getStatus() == null || bid.getStatus().trim().isEmpty()
@@ -91,7 +90,6 @@ public class BidWriterAdapter extends RecyclerView.Adapter<BidWriterAdapter.BidV
 
         private final TextView tvWriterName;
         private final TextView tvCompletedProjects;
-        private final TextView tvWriterRating;
         private final TextView tvBidStatus;
         private final View layoutBidActions;
         private final MaterialButton btnViewProfile;
@@ -102,20 +100,12 @@ public class BidWriterAdapter extends RecyclerView.Adapter<BidWriterAdapter.BidV
             super(itemView);
             tvWriterName = itemView.findViewById(R.id.tvWriterName);
             tvCompletedProjects = itemView.findViewById(R.id.tvCompletedProjects);
-            tvWriterRating = itemView.findViewById(R.id.tvWriterRating);
             tvBidStatus = itemView.findViewById(R.id.tvBidStatus);
             layoutBidActions = itemView.findViewById(R.id.layoutBidActions);
             btnViewProfile = itemView.findViewById(R.id.btnViewProfile);
             btnAcceptBid = itemView.findViewById(R.id.btnAcceptBid);
             btnRejectBid = itemView.findViewById(R.id.btnRejectBid);
         }
-    }
-
-    private String formatRating(Double rating) {
-        if (rating == null || rating <= 0) {
-            return "N/A";
-        }
-        return String.format(java.util.Locale.US, "%.1f", rating);
     }
 
     private String getStatusLabel(String status) {
@@ -125,4 +115,3 @@ public class BidWriterAdapter extends RecyclerView.Adapter<BidWriterAdapter.BidV
         return status;
     }
 }
-

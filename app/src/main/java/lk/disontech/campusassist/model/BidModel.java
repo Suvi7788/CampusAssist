@@ -20,6 +20,5 @@ public class BidModel {
     private long createdAt;
     private String status; // "Pending", "Accepted", "Rejected"
     private long completedProjectsCount;
-    private Double rating;
 }
 

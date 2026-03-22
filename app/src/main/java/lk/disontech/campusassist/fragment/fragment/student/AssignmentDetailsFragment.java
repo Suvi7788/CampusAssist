@@ -1629,10 +1629,6 @@ public class AssignmentDetailsFragment extends Fragment implements OnMapReadyCal
 
         firebaseFirestore.collection("Users").document(bid.getWriterId()).get()
                 .addOnSuccessListener(documentSnapshot -> {
-                    Double rating = documentSnapshot.getDouble("rating");
-                    if (rating != null) {
-                        bid.setRating(rating);
-                    }
 
                     String firstName = documentSnapshot.getString("firstName");
                     String lastName = documentSnapshot.getString("lastName");
