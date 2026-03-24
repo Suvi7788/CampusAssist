@@ -101,16 +101,34 @@ public class DashboardActivity extends AppCompatActivity
                 }
             }
         });
+        if (getIntent().hasExtra("notification_type")) {
+            openNotifications();
+        }
     }
 
-    // New Notification Methods from your friend's code
     private void subscribeToPushNotifications() {
+        // 1. Always subscribe to the general topic
         FirebaseMessaging.getInstance().subscribeToTopic("all_users")
-                .addOnSuccessListener(aVoid -> Log.d(TAG, "Successfully subscribed to all_users topic"))
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to subscribe to topic", e);
-                    Toast.makeText(DashboardActivity.this, "Failed to enable notifications", Toast.LENGTH_SHORT).show();
-                });
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "Subscribed to all_users"))
+                .addOnFailureListener(e -> Log.e(TAG, "Failed all_users subscription", e));
+
+        // 2. Subscribe/Unsubscribe based on the current user role
+        if ("writer".equals(role)) {
+            // Join writer topic
+            FirebaseMessaging.getInstance().subscribeToTopic("writers")
+                    .addOnSuccessListener(aVoid -> Log.d(TAG, "Subscribed to writers topic"));
+
+            // Clean up: make sure they aren't still listening to students
+            FirebaseMessaging.getInstance().unsubscribeFromTopic("students");
+
+        } else if ("student".equals(role)) {
+            // Join student topic
+            FirebaseMessaging.getInstance().subscribeToTopic("students")
+                    .addOnSuccessListener(aVoid -> Log.d(TAG, "Subscribed to students topic"));
+
+            // Clean up: make sure they aren't still listening to writers
+            FirebaseMessaging.getInstance().unsubscribeFromTopic("writers");
+        }
     }
 
     private void requestNotificationPermission() {
