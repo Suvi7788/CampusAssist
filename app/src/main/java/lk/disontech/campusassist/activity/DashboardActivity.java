@@ -1,12 +1,20 @@
 package lk.disontech.campusassist.activity;
 
+import android.Manifest; // Added
 import android.content.Intent;
+import android.content.pm.PackageManager; // Added
+import android.os.Build; // Added
 import android.os.Bundle;
+import android.util.Log; // Added
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast; // Added
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull; // Added
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat; // Added
+import androidx.core.content.ContextCompat; // Added
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
@@ -14,6 +22,7 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.messaging.FirebaseMessaging; // Added
 
 import java.util.Locale;
 
@@ -34,6 +43,9 @@ public class DashboardActivity extends AppCompatActivity
         implements StudentDashboardFragment.StudentDashboardNavigator,
         WriterDashboardFragment.WriterDashboardNavigator {
 
+    private static final String TAG = "DashboardActivity"; // Added
+    private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 101; // Added
+
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private BottomNavigationView bottomNavigationView;
@@ -52,6 +64,11 @@ public class DashboardActivity extends AppCompatActivity
         logoutLoadingOverlay = findViewById(R.id.logoutLoadingOverlay);
 
         role = normalizeRole(getIntent().getStringExtra("role"));
+
+        // --- Notification Implementation Starts ---
+        subscribeToPushNotifications();
+        requestNotificationPermission();
+        // --- Notification Implementation Ends ---
 
         setupHeader();
         setupMenuByRole();
@@ -86,6 +103,40 @@ public class DashboardActivity extends AppCompatActivity
         });
     }
 
+    // New Notification Methods from your friend's code
+    private void subscribeToPushNotifications() {
+        FirebaseMessaging.getInstance().subscribeToTopic("all_users")
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "Successfully subscribed to all_users topic"))
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed to subscribe to topic", e);
+                    Toast.makeText(DashboardActivity.this, "Failed to enable notifications", Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        NOTIFICATION_PERMISSION_REQUEST_CODE);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "Notification permission granted");
+            } else {
+                Log.d(TAG, "Notification permission denied");
+            }
+        }
+    }
+
+    // Keep all your original methods exactly as they were
     private void setupHeader() {
         View headerView = navigationView.getHeaderView(0);
         TextView tvUserName = headerView.findViewById(R.id.tvUserName);

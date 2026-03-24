@@ -48,10 +48,8 @@ dependencies {
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
     implementation libs.fragment
-    implementation(libs.firebase.bom.v3490)
-    implementation libs.firebase.auth
+    implementation(platform(libs.firebase.bom))
     implementation(libs.google.firebase.analytics)
-    implementation libs.firebase.firestore
     implementation libs.firebase.storage
     compileOnly libs.lombok
     annotationProcessor libs.lombok
@@ -61,5 +59,10 @@ dependencies {
     implementation "androidx.biometric:biometric:1.1.0"
     implementation "com.google.android.gms:play-services-maps:19.2.0"
     implementation "com.google.android.gms:play-services-location:21.3.0"
+    implementation "com.jakewharton.threetenabp:threetenabp:1.4.4"
+    implementation(platform(libs.firebase.bom)) // The "Master" version controller
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
 
 }
